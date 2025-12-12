@@ -54,7 +54,7 @@ public class ProfileManager {
             if (appdata == null) {
                 appdata = System.getProperty("user.home");
             }
-            return Paths.get(appdata, "Haven and Hearth");
+            return Paths.get(appdata, "Nurgling");
         }
     }
 

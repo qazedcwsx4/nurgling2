@@ -23,7 +23,7 @@ public class IconRingConfig {
             appdata = System.getProperty("user.home");
         }
         
-        this.configFile = Paths.get(appdata, "Haven and Hearth", "data", genus, "nurgling-icon-rings.json");
+        this.configFile = Paths.get(appdata, "Nurgling", "data", genus, "nurgling-icon-rings.json");
         load();
     }
     
