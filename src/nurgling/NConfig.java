@@ -26,6 +26,7 @@ public class NConfig
     {
         vilol, claimol, realmol,
         minimapVilol, minimapClaimol, minimapRealmol,
+        selectedWorld,
         showVarity,
         autoFlower,
         autoSplitter,
@@ -46,6 +47,7 @@ public class NConfig
         nextshowCSprite,
         showCSprite,
         hideNature,
+        hideEarthworm,
         invert_hor,
         invert_ver,
         kinprop,
@@ -97,7 +99,7 @@ public class NConfig
         worldexplorerprop,
         questNotified, lpassistent, fishingsettings,
         serverNode, serverUser, serverPass, ndbenable, harvestautorefill, cleanupQContainers, autoEquipTravellersSacks, qualityGrindSeedingPatter, postgres, sqlite, dbFilePath, simplecrops,
-        temsmarktime, exploredAreaEnable, player_box, player_fov, temsmarkdist, tempmark, tempmarkIgnoreDist, gridbox, useGlobalPf, useHFinGlobalPF, boxFillColor, boxEdgeColor, boxLineWidth, ropeAfterFeeding, ropeAfterTaiming, eatingConf, deersprop,dropConf, printpfmap, fonts,
+        temsmarktime, exploredAreaEnable, chunkNavOverlay, player_box, player_fov, temsmarkdist, tempmark, tempmarkIgnoreDist, gridbox, useGlobalPf, useHFinGlobalPF, boxFillColor, boxEdgeColor, boxLineWidth, ropeAfterFeeding, ropeAfterTaiming, eatingConf, deersprop,dropConf, printpfmap, fonts,
         shortCupboards,
         shortWalls,
         decalsOnTop,
@@ -113,7 +115,6 @@ public class NConfig
         waypointRetryOnStuck,
         verboseCal,
         highlightRockTiles,
-        showFullPathLines,
         preferredMovementSpeed,
         preferredHorseSpeed,
         uiOpacity,
@@ -140,6 +141,8 @@ public class NConfig
         simpleInspect,
         showSpeedometer,
         showPathLine,
+        pathLineWidth,
+        pathLineColor,
         parasiteBotEnabled,
         leechAction,
         tickAction,
@@ -154,7 +157,17 @@ public class NConfig
         showThingwallNames,
         showPartyMemberNames,
         trackingVectors,
-        randomAreaColor
+        randomAreaColor,
+        treeScaleDisableZoomHide,
+        treeScaleMinThreshold,
+        thinOutlines,
+        itemQualityOverlay,
+        stackQualityOverlay,
+        amountOverlay,
+        studyInfoOverlay,
+        progressOverlay,
+        volumeOverlay,
+        equipProxySlots
     }
 
     public enum BBDisplayMode
@@ -185,6 +198,7 @@ public class NConfig
         conf.put(Key.minimapVilol, false);
         conf.put(Key.minimapClaimol, false);
         conf.put(Key.minimapRealmol, false);
+        conf.put(Key.selectedWorld, null);
         conf.put(Key.showVarity, false);
         conf.put(Key.autoFlower, false);
         conf.put(Key.autoSplitter, false);
@@ -201,6 +215,7 @@ public class NConfig
         conf.put(Key.nextshowCSprite, false);
         conf.put(Key.showCSprite, true);
         conf.put(Key.hideNature, false);
+        conf.put(Key.hideEarthworm, true);  // true = show earthworms (checkbox unchecked by default)
         conf.put(Key.invert_hor, false);
         conf.put(Key.invert_ver, false);
         conf.put(Key.show_drag_menu, true);
@@ -248,6 +263,7 @@ public class NConfig
         conf.put(Key.serverPass, "");
         conf.put(Key.serverUser, "");
         conf.put(Key.exploredAreaEnable, false);
+        conf.put(Key.chunkNavOverlay, false);
         conf.put(Key.player_box, false);
         conf.put(Key.player_fov, false);
         conf.put(Key.gridbox, false);
@@ -275,9 +291,10 @@ public class NConfig
         conf.put(Key.waypointRetryOnStuck, true);
         conf.put(Key.verboseCal, false);
         conf.put(Key.highlightRockTiles, true);
-        conf.put(Key.showFullPathLines, false);
         conf.put(Key.showSpeedometer, false);
         conf.put(Key.showPathLine, false);
+        conf.put(Key.pathLineWidth, 4);
+        conf.put(Key.pathLineColor, new Color(255, 255, 0));  // Yellow
 
         ArrayList<HashMap<String, Object>> qpattern = new ArrayList<>();
         HashMap<String, Object> res1 = new HashMap<>();
@@ -351,6 +368,10 @@ public class NConfig
         arearadprop.add(new NAreaRad("gfx/kritter/goldeneagle/goldeneagle", 100));
         arearadprop.add(new NAreaRad("gfx/kritter/goat/goat", 100));
         arearadprop.add(new NAreaRad("gfx/kritter/troll/troll", 200));
+        arearadprop.add(new NAreaRad("gfx/kritter/rat/rat", 200));
+        arearadprop.add(new NAreaRad("gfx/kritter/eagle/eagle", 200));
+        arearadprop.add(new NAreaRad("gfx/kritter/cavelouse/cavelouse", 200));
+        arearadprop.add(new NAreaRad("gfx/kritter/boreworm/boreworm", 200));
         conf.put(Key.animalrad, arearadprop);
 
         // Movement speed setting (0=Crawl, 1=Walk, 2=Run, 3=Sprint)
@@ -413,12 +434,60 @@ public class NConfig
         
         // Random area color on creation
         conf.put(Key.randomAreaColor, false);
+        
+        // Tree scale overlay settings
+        conf.put(Key.treeScaleDisableZoomHide, false);  // If true, always show full label (don't hide on zoom out)
+        conf.put(Key.treeScaleMinThreshold, 0);  // Minimum growth % to display tree scale (0 = show all)
+
+        // Outline rendering settings
+        conf.put(Key.thinOutlines, false);  // If true, use thinner object outlines
+
+        // Item quality overlay settings
+        conf.put(Key.itemQualityOverlay, new ItemQualityOverlaySettings());
+        // Stack quality overlay settings
+        ItemQualityOverlaySettings stackDefaults = new ItemQualityOverlaySettings();
+        stackDefaults.corner = ItemQualityOverlaySettings.Corner.TOP_LEFT;
+        conf.put(Key.stackQualityOverlay, stackDefaults);
+        // Amount overlay settings
+        ItemQualityOverlaySettings amountDefaults = new ItemQualityOverlaySettings();
+        amountDefaults.corner = ItemQualityOverlaySettings.Corner.BOTTOM_RIGHT;
+        amountDefaults.useThresholds = false;
+        conf.put(Key.amountOverlay, amountDefaults);
+        // Study info overlay settings
+        ItemQualityOverlaySettings studyDefaults = new ItemQualityOverlaySettings();
+        studyDefaults.corner = ItemQualityOverlaySettings.Corner.BOTTOM_LEFT;
+        studyDefaults.useThresholds = false;
+        studyDefaults.defaultColor = new java.awt.Color(255, 255, 50);
+        conf.put(Key.studyInfoOverlay, studyDefaults);
+        // Progress/meter overlay settings
+        ItemQualityOverlaySettings progressDefaults = new ItemQualityOverlaySettings();
+        progressDefaults.corner = ItemQualityOverlaySettings.Corner.BOTTOM_LEFT;
+        progressDefaults.useThresholds = false;
+        progressDefaults.defaultColor = new java.awt.Color(234, 164, 101);
+        progressDefaults.showBackground = true;
+        conf.put(Key.progressOverlay, progressDefaults);
+        // Volume overlay settings (CustomName - kg/l)
+        ItemQualityOverlaySettings volumeDefaults = new ItemQualityOverlaySettings();
+        volumeDefaults.corner = ItemQualityOverlaySettings.Corner.TOP_LEFT;
+        volumeDefaults.useThresholds = false;
+        volumeDefaults.defaultColor = new java.awt.Color(65, 255, 115);
+        volumeDefaults.showBackground = true;
+        conf.put(Key.volumeOverlay, volumeDefaults);
+
+        // Equipment proxy slots - default to Left Hand, Right Hand, Belt
+        ArrayList<Integer> defaultEquipProxySlots = new ArrayList<>();
+        defaultEquipProxySlots.add(6);  // HAND_LEFT
+        defaultEquipProxySlots.add(7);  // HAND_RIGHT
+        defaultEquipProxySlots.add(5);  // BELT
+        conf.put(Key.equipProxySlots, defaultEquipProxySlots);
     }
 
 
     HashMap<Key, Object> conf = new HashMap<>();
     private boolean isUpd = false;
     private boolean isAreasUpd = false;
+    private long lastAreasChangeTime = 0;
+    private static final long AREAS_DEBOUNCE_MS = 3000; // 3 seconds debounce for area changes
     private boolean isExploredUpd = false;
     private boolean isRoutesUpd = false;
     private boolean isScenariosUpd = false;
@@ -431,7 +500,13 @@ public class NConfig
 
     public boolean isAreasUpdated()
     {
-        return isAreasUpd;
+        // Only return true if areas changed AND debounce period has passed
+        // This batches multiple rapid changes into a single DB update
+        if (isAreasUpd && lastAreasChangeTime > 0) {
+            long elapsed = System.currentTimeMillis() - lastAreasChangeTime;
+            return elapsed >= AREAS_DEBOUNCE_MS;
+        }
+        return false;
     }
 
     public boolean isRoutesUpdated() {
@@ -472,15 +547,19 @@ public class NConfig
     public static void needAreasUpdate()
     {
         // Only update profile-specific config (areas are per-world)
+        // Record timestamp for debouncing - actual save happens after AREAS_DEBOUNCE_MS of inactivity
+        long now = System.currentTimeMillis();
         try {
             if (nurgling.NUtils.getGameUI() != null && nurgling.NUtils.getUI() != null && nurgling.NUtils.getUI().core != null) {
                 nurgling.NUtils.getUI().core.config.isAreasUpd = true;
+                nurgling.NUtils.getUI().core.config.lastAreasChangeTime = now;
             }
         } catch (Exception e) {
             // Fallback to global config if profile config not available
             if (current != null)
             {
                 current.isAreasUpd = true;
+                current.lastAreasChangeTime = now;
             }
         }
     }
@@ -744,6 +823,11 @@ public class NConfig
                     res.addAll(objs);
                     break;
                 }
+                else if (jobj instanceof Number) {
+                    // Handle arrays of numbers (integers, longs, etc.)
+                    res.addAll(objs);
+                    break;
+                }
             }
             return res;
         }
@@ -780,6 +864,9 @@ public class NConfig
                                     break;
                                 case "FontSettings":
                                     conf.put(Key.fonts, new FontSettings(hobj));
+                                    break;
+                                case "ItemQualityOverlaySettings":
+                                    conf.put(Key.valueOf(entry.getKey()), new ItemQualityOverlaySettings(hobj));
                                     break;
                                 case "Color":
                                     try {
@@ -899,24 +986,75 @@ public class NConfig
     {
         if(NUtils.getGameUI()!=null && NUtils.getGameUI().map!=null)
         {
-            JSONObject main = new JSONObject();
-            JSONArray jareas = new JSONArray();
-            for(NArea area : ((NMapView)NUtils.getGameUI().map).glob.map.areas.values())
-            {
-                jareas.put(area.toJson());
+            // If customPath is provided, write to file (for manual export only)
+            if (customPath != null) {
+                writeAreasToFile(customPath);
+                return;
             }
-            main.put("areas",jareas);
-            try
-            {
-                FileWriter f = new FileWriter(customPath==null?getAreasPath():customPath,StandardCharsets.UTF_8);
-                main.write(f);
-                f.close();
-                current.isAreasUpd = false;
+
+            // If DB is enabled - ONLY use DB, never fallback to file
+            if ((Boolean) NConfig.get(NConfig.Key.ndbenable)) {
+                // Reset flags to prevent repeated calls (use 'this' not 'current' - they may be different instances)
+                this.isAreasUpd = false;
+                this.lastAreasChangeTime = 0;
+                
+                if (NCore.databaseManager != null && NCore.databaseManager.isReady()) {
+                    try {
+                        String profile = NUtils.getGameUI().getGenus();
+                        if (profile == null || profile.isEmpty()) {
+                            profile = "global";
+                        }
+                        java.util.Map<Integer, NArea> areas = ((NMapView)NUtils.getGameUI().map).glob.map.areas;
+                        // Capture 'this' for use in async callback
+                        final NConfig self = this;
+                        NCore.databaseManager.getAreaService().exportAreasToDatabaseAsync(areas, profile)
+                            .thenAccept(count -> {
+                                // Silent save - no spam
+                            })
+                            .exceptionally(e -> {
+                                System.err.println("Failed to save areas to database: " + e.getMessage());
+                                if (e.getCause() != null) {
+                                    e.getCause().printStackTrace();
+                                }
+                                // Set flag back to retry later (with timestamp for debounce)
+                                self.isAreasUpd = true;
+                                self.lastAreasChangeTime = System.currentTimeMillis();
+                                return null;
+                            });
+                    } catch (Exception e) {
+                        System.err.println("Failed to save areas to database: " + e.getMessage());
+                        this.isAreasUpd = true;
+                        this.lastAreasChangeTime = System.currentTimeMillis();
+                    }
+                }
+                // DB enabled but not ready - just skip, will retry on next tick
+                return;
             }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
+
+            // DB not enabled - write to file
+            writeAreasToFile(getAreasPath());
+        }
+    }
+
+    private void writeAreasToFile(String path) {
+        JSONObject main = new JSONObject();
+        JSONArray jareas = new JSONArray();
+        for(NArea area : ((NMapView)NUtils.getGameUI().map).glob.map.areas.values())
+        {
+            jareas.put(area.toJson());
+        }
+        main.put("areas",jareas);
+        try
+        {
+            FileWriter f = new FileWriter(path, StandardCharsets.UTF_8);
+            main.write(f);
+            f.close();
+            this.isAreasUpd = false;
+            this.lastAreasChangeTime = 0;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 
@@ -1084,25 +1222,46 @@ public class NConfig
     {
         if(NUtils.getGameUI()!=null && NUtils.getGameUI().map!=null)
         {
-            JSONObject main = new JSONObject();
-            JSONArray jroutes = new JSONArray();
-            for(Route route : ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().values())
-            {
-                jroutes.put(route.toJson());
+            // If customPath is provided, write to file (for manual export only)
+            if (customPath != null) {
+                writeRoutesToFile(customPath);
+                return;
             }
-            main.put("routes",jroutes);
 
-            try
-            {
-                FileWriter f = new FileWriter(customPath==null?getRoutesPath():customPath,StandardCharsets.UTF_8);
-                main.write(f);
-                f.close();
-                this.isRoutesUpd = false;
+            // If DB is enabled - do NOT batch export!
+            // Routes are saved individually when recorded through RouteAutoRecorder.
+            // This prevents local files from overwriting database.
+            if ((Boolean) NConfig.get(NConfig.Key.ndbenable)) {
+                current.isRoutesUpd = false;
+                // Individual routes are saved via RouteService.saveRouteAsync()
+                // when they are actually recorded through the client
+                return;
             }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
+
+            // DB not enabled - write to file
+            writeRoutesToFile(getRoutesPath());
+        }
+    }
+
+    private void writeRoutesToFile(String path) {
+        JSONObject main = new JSONObject();
+        JSONArray jroutes = new JSONArray();
+        for(Route route : ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().values())
+        {
+            jroutes.put(route.toJson());
+        }
+        main.put("routes",jroutes);
+
+        try
+        {
+            FileWriter f = new FileWriter(path, StandardCharsets.UTF_8);
+            main.write(f);
+            f.close();
+            this.isRoutesUpd = false;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 

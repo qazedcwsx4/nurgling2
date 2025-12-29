@@ -16,6 +16,9 @@ import nurgling.conf.QuickActionPreset;
 import nurgling.widgets.options.QuickActions;
 import nurgling.overlays.*;
 import nurgling.overlays.map.*;
+import nurgling.navigation.ChunkNavData;
+import nurgling.navigation.ChunkNavManager;
+import nurgling.navigation.ChunkPortal;
 import nurgling.routes.Route;
 import nurgling.routes.RouteGraphManager;
 import nurgling.routes.RoutePoint;
@@ -24,6 +27,8 @@ import nurgling.tasks.WaitForMapLoadNoCoord;
 import nurgling.tools.*;
 import nurgling.widgets.NAreasWidget;
 import nurgling.widgets.NMiniMap;
+import nurgling.widgets.NZoneMeasureTool;
+import nurgling.NConfig;
 
 import java.awt.event.KeyEvent;
 import java.awt.image.*;
@@ -52,6 +57,8 @@ public class NMapView extends MapView
     private RouteLabel draggedRouteLabel = null;
     private boolean isDraggingRoutePoint = false;
     private UI.Grab dragGrab = null;
+    // Chunk navigation manager - owned by NMapView, not a singleton
+    private ChunkNavManager chunkNavManager;
     
     // Find RouteLabel at screen coordinate
     private RouteLabel getRouteLabeAt(Coord screenCoord) {
@@ -84,6 +91,23 @@ public class NMapView extends MapView
         if (routeGraphManager == null) {
             routeGraphManager = new RouteGraphManager(genus);
         }
+        // Initialize ChunkNav system for this world
+        try {
+            if (chunkNavManager == null) {
+                chunkNavManager = new ChunkNavManager();
+            }
+            chunkNavManager.initialize(genus);
+        } catch(Exception e) {
+            System.err.println("NMapView: Error initializing ChunkNavManager: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get the chunk navigation manager for this map view.
+     * @return The ChunkNavManager instance, or null if not initialized
+     */
+    public ChunkNavManager getChunkNavManager() {
+        return chunkNavManager;
     }
 
     final HashMap<String, String> ttip = new HashMap<>();
@@ -99,10 +123,16 @@ public class NMapView extends MapView
     public Pair<Coord, Coord> currentSelectionCoords = null;  // Current selection coords during dragging
     public boolean rotationRequested = false;  // Flag to request rotation during area selection
     public Gob selectedGob = null;
+
+    // Zone measure tool state
+    public boolean zoneMeasureMode = false;
+    public boolean zoneClearMode = false;
+    public NZoneMeasureTool zoneMeasureTool = null;
     public static boolean isRecordingRoutePoint = false;
 
     public HashMap<Long, Gob> dummys = new HashMap<>();
     public HashMap<Long, Gob> routeDummys = new HashMap<>();
+    public HashMap<Long, Gob> portalDummys = new HashMap<>();
 
     public RouteGraphManager routeGraphManager;
 
@@ -220,12 +250,16 @@ public class NMapView extends MapView
                         Coord playerc = screenxf(player.getc()).round2();
                         Coord destc = screenxf(clickDestination).round2();
                         if (playerc != null && destc != null) {
+                            // Get line settings from config
+                            Object widthObj = NConfig.get(NConfig.Key.pathLineWidth);
+                            int lineWidth = (widthObj instanceof Number) ? ((Number) widthObj).intValue() : 4;
+                            java.awt.Color lineColor = NConfig.getColor(NConfig.Key.pathLineColor, java.awt.Color.YELLOW);
                             // Draw black outline
                             g.chcolor(java.awt.Color.BLACK);
-                            g.line(playerc, destc, 6);
-                            // Draw bright yellow core
-                            g.chcolor(java.awt.Color.YELLOW);
-                            g.line(playerc, destc, 4);
+                            g.line(playerc, destc, lineWidth + 2);
+                            // Draw colored core
+                            g.chcolor(lineColor);
+                            g.line(playerc, destc, lineWidth);
                             // Reset color
                             g.chcolor();
                         }
@@ -315,6 +349,59 @@ public class NMapView extends MapView
                 glob.oc.remove(d);
         }
         routeDummys.clear();
+    }
+
+    public void destroyPortalDummys()
+    {
+        for(Gob d: portalDummys.values())
+        {
+            if(glob.oc.getgob(d.id)!=null)
+                glob.oc.remove(d);
+        }
+        portalDummys.clear();
+    }
+
+    /**
+     * Create portal labels for all portals in all visible chunks.
+     * Only creates labels if chunkNavOverlay config is enabled.
+     */
+    public void createPortalLabels() {
+        destroyPortalDummys();
+
+        // Check if ChunkNav overlay is enabled
+        Object val = NConfig.get(NConfig.Key.chunkNavOverlay);
+        if (!(val instanceof Boolean) || !(Boolean) val) {
+            return; // Don't show portal dots if overlay is disabled
+        }
+
+        ChunkNavManager manager = getChunkNavManager();
+        if (manager == null || !manager.isInitialized()) return;
+
+        MCache mcache = glob.map;
+        if (mcache == null) return;
+
+        synchronized (mcache.grids) {
+            for (MCache.Grid grid : mcache.grids.values()) {
+                if (grid == null || grid.ul == null) continue;
+
+                ChunkNavData chunk = manager.getGraph().getChunk(grid.id);
+                if (chunk == null) continue;
+
+                for (ChunkPortal portal : chunk.portals) {
+                    if (portal.localCoord == null) continue;
+
+                    // Convert local tile coord to world coord
+                    Coord worldTile = grid.ul.add(portal.localCoord);
+                    Coord2d absCoord = worldTile.mul(MCache.tilesz).add(MCache.tilesz.div(2));
+
+                    OCache.Virtual dummy = glob.oc.new Virtual(absCoord, 0);
+                    dummy.virtual = true;
+                    dummy.addcustomol(new PortalLabel(dummy, chunk, portal));
+                    portalDummys.put(dummy.id, dummy);
+                    glob.oc.add(dummy);
+                }
+            }
+        }
     }
 
     public static NMiningOverlay getMiningOl()
@@ -695,6 +782,7 @@ public class NMapView extends MapView
             NArea newArea = new NArea(key);
             newArea.id = id;
             newArea.space = result;
+            newArea.lastLocalChange = System.currentTimeMillis();
             newArea.grids_id.addAll(newArea.space.space.keySet());
             newArea.path = NUtils.getGameUI().areas.currentPath;
             
@@ -721,6 +809,7 @@ public class NMapView extends MapView
     public String addRoute()
     {
         String key;
+        Route newRoute;
         synchronized (((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes())
         {
             HashSet<String> names = new HashSet<String>();
@@ -738,18 +827,21 @@ public class NMapView extends MapView
             {
                 key = key+"(1)";
             }
-            Route newRoute = new Route(key);
+            newRoute = new Route(key);
             newRoute.id = id;
             newRoute.path = NUtils.getGameUI().routesWidget.currentPath;
             ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().put(id, newRoute);
             createRouteLabel(id);
         }
+        // Save to database if DB mode is enabled
+        routeGraphManager.saveRouteToDatabase(newRoute);
         return key;
     }
 
     public String addHearthFireRoute()
     {
         String key;
+        Route newRoute;
         synchronized (((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes())
         {
             HashSet<String> names = new HashSet<String>();
@@ -767,13 +859,15 @@ public class NMapView extends MapView
             {
                 key = key+"(1)";
             }
-            Route newRoute = new Route(key);
+            newRoute = new Route(key);
             newRoute.id = id;
             newRoute.path = NUtils.getGameUI().routesWidget.currentPath;
             newRoute.spec.add(new Route.RouteSpecialization("HearthFires"));
             ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().put(id, newRoute);
             createRouteLabel(id);
         }
+        // Save to database if DB mode is enabled
+        routeGraphManager.saveRouteToDatabase(newRoute);
         return key;
     }
 
@@ -795,6 +889,11 @@ public class NMapView extends MapView
         // Update marker line overlay (follows player)
         if(markerLineOverlay != null) {
             markerLineOverlay.tick();
+        }
+
+        // Tick chunk navigation system for recording
+        if (chunkNavManager != null) {
+            chunkNavManager.tick();
         }
         ArrayList<Long> forRemove = new ArrayList<>();
 //        for(Gob dummy : dummys.values())
@@ -892,6 +991,27 @@ public class NMapView extends MapView
             }
         }
         
+        // Handle zone measure mode
+        if (zoneMeasureMode && ev.b == 1) {
+            if (selection == null) {
+                selection = new ZoneMeasureSelector();
+            }
+        }
+
+        // Handle zone clear mode
+        if (zoneClearMode && ev.b == 1) {
+            new Maptest(ev.c) {
+                public void hit(Coord pc, Coord2d mc) {
+                    Coord tileCoord = mc.div(MCache.tilesz).floor();
+                    if (zoneMeasureTool != null) {
+                        zoneMeasureTool.onZoneClicked(tileCoord);
+                    }
+                    zoneClearMode = false;
+                }
+            }.run();
+            return true;
+        }
+
         if ( isAreaSelectionMode.get() )
         {
             if (selection == null)
@@ -1269,7 +1389,60 @@ public class NMapView extends MapView
             }
         }
     }
-    
+
+    /**
+     * Selector for zone measurement tool
+     * Similar to NSelector but notifies the tool instead of creating areas
+     */
+    public class ZoneMeasureSelector extends Selector {
+        public ZoneMeasureSelector() {
+            super(null);  // No max size limit
+        }
+
+        @Override
+        public void mmousemove(Coord mc) {
+            super.mmousemove(mc);
+            // Live dimension display is handled by parent Selector's tt field
+        }
+
+        @Override
+        public boolean mmouseup(Coord mc, int button) {
+            synchronized (NMapView.this) {
+                if (sc != null) {
+                    Coord ec = mc.div(MCache.tilesz2);
+
+                    // Notify the tool with tile coordinates
+                    if (zoneMeasureTool != null) {
+                        zoneMeasureTool.onAreaSelected(sc, ec);
+                    }
+
+                    // Cleanup
+                    xl.mv = false;
+                    tt = null;
+                    ol.destroy();
+                    mgrab.remove();
+                    sc = null;
+                    destroy();
+                    selection = null;
+                    zoneMeasureMode = false;
+                }
+                return true;
+            }
+        }
+
+        @Override
+        public void destroy() {
+            synchronized (NMapView.this) {
+                // Notify tool of cancellation if we're being destroyed without completing
+                if (sc != null && zoneMeasureTool != null) {
+                    zoneMeasureTool.onSelectionCancelled();
+                }
+                super.destroy();
+                zoneMeasureMode = false;
+            }
+        }
+    }
+
     /**
      * Send selected area to chat in @Area format
      * Format: @Area(grid:x,y;grid:x,y) - two corner points (upper-left and bottom-right)
@@ -1383,15 +1556,27 @@ public class NMapView extends MapView
             if(area.name.equals(name))
             {
                 area.inWork = true;
-                glob.map.areas.remove(area.id);
+                final int areaId = area.id;
+                glob.map.areas.remove(areaId);
                 Gob dummy = dummys.get(area.gid);
                 if(dummy != null) {
                     glob.oc.remove(dummy);
                     dummys.remove(area.gid);
                 }
-                NUtils.getGameUI().areas.removeArea(area.id);
+                NUtils.getGameUI().areas.removeArea(areaId);
 
-                routeGraphManager.getGraph().deleteAreaFromRoutePoints(area.id);
+                routeGraphManager.getGraph().deleteAreaFromRoutePoints(areaId);
+
+                // Delete from database if enabled
+                if ((Boolean) nurgling.NConfig.get(nurgling.NConfig.Key.ndbenable) &&
+                    nurgling.NCore.databaseManager != null && 
+                    nurgling.NCore.databaseManager.isReady()) {
+                    String profile = NUtils.getGameUI().getGenus();
+                    if (profile == null || profile.isEmpty()) {
+                        profile = "global";
+                    }
+                    nurgling.NCore.databaseManager.getAreaService().deleteAreaAsync(areaId, profile);
+                }
 
                 break;
             }
@@ -1404,6 +1589,7 @@ public class NMapView extends MapView
             if(area.name.equals(name) && area.path.equals(path))
             {
                 area.hide = val;
+                area.lastLocalChange = System.currentTimeMillis();
                 NConfig.needAreasUpdate();
                 return;
             }
@@ -1416,36 +1602,50 @@ public class NMapView extends MapView
         {
             if(area.name.equals(name))
             {
-                area.inWork = true;
-                if(NUtils.getGameUI()!=null && NUtils.getGameUI().map!=null)
-                {
-                    NOverlay nol = NUtils.getGameUI().map.nols.get(area.id);
-                    if (nol != null)
-                        nol.remove();
-                    Gob dummy = dummys.get(area.gid);
-                    if(dummy != null) {
-                        glob.oc.remove(dummy);
-                        dummys.remove(area.gid);
-                    }
-                    NUtils.getGameUI().map.nols.remove(area.id);
-                    routeGraphManager.getGraph().deleteAreaFromRoutePoints(area.id);
-                }
-                NAreaSelector.changeArea(area);
+                changeArea(area.id);
                 break;
             }
         }
     }
 
+    public void changeArea(int id)
+    {
+        NArea area = glob.map.areas.get(id);
+        if (area != null)
+        {
+            area.inWork = true;
+            if(NUtils.getGameUI()!=null && NUtils.getGameUI().map!=null)
+            {
+                NOverlay nol = NUtils.getGameUI().map.nols.get(area.id);
+                if (nol != null)
+                    nol.remove();
+                Gob dummy = dummys.get(area.gid);
+                if(dummy != null) {
+                    glob.oc.remove(dummy);
+                    dummys.remove(area.gid);
+                }
+                NUtils.getGameUI().map.nols.remove(area.id);
+                routeGraphManager.getGraph().deleteAreaFromRoutePoints(area.id);
+            }
+            NAreaSelector.changeArea(area);
+        }
+    }
+
     public void changeAreaName(Integer id, String new_name)
     {
-        glob.map.areas.get(id).name = new_name;
+        NArea area = glob.map.areas.get(id);
+        area.name = new_name;
+        area.lastLocalChange = System.currentTimeMillis();
         NConfig.needAreasUpdate();
     }
 
     public void changeRouteName(Integer id, String new_name)
     {
-        ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().get(id).name = new_name;
+        Route route = ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().get(id);
+        route.name = new_name;
         NConfig.needRoutesUpdate();
+        // Save to database if DB mode is enabled
+        routeGraphManager.saveRouteToDatabase(route);
     }
 
     void getGob(Coord c) {

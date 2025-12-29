@@ -1220,6 +1220,7 @@ public class VSpec {
         categories.put("Tuber", rootVegetables);
 
         ArrayList<JSONObject> onions = new ArrayList<>();
+        onions.add(new JSONObject("{\"static\":\"gfx/invobjs/preonion\",\"name\":\"Wild Onion\"}"));
         onions.add(new JSONObject("{\"static\":\"gfx/invobjs/yellowonion\",\"name\":\"Yellow Onion\"}"));
         onions.add(new JSONObject("{\"static\":\"gfx/invobjs/redonion\",\"name\":\"Red Onion\"}"));
         onions.add(new JSONObject("{\"static\":\"gfx/invobjs/garlic\",\"name\":\"Garlic\"}"));
@@ -1341,6 +1342,7 @@ public class VSpec {
         mushrooms.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/stalagoom\",\"name\":\"Stalagoom\"}"));
         mushrooms.add(new JSONObject("{\"static\":\"gfx/invobjs/trollshrooms\",\"name\":\"Troll Mushrooms\"}"));
         mushrooms.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/yellowfoot\",\"name\":\"Yellowfeet\"}"));
+        mushrooms.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/lorchel\",\"name\":\"Morels\"}"));
         categories.put("Edible Mushroom", mushrooms);
 
         ArrayList<JSONObject> nuts = new ArrayList<>();
@@ -1469,6 +1471,8 @@ public class VSpec {
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/plum\",\"name\":\"Plum\"}"));
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/quince\",\"name\":\"Quince\"}"));
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/apple\",\"name\":\"Red Apple\"}"));
+        fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/applegreen\",\"name\":\"Green Apple\"}"));
+        fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/sorbapple\",\"name\":\"Sorb Apple\"}"));
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-blackcurrant-yester\",\"name\":\"Yesteryear's Blackcurrant Seed\"}"));
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/cherry-yester\",\"name\":\"Yesteryear's Cherry\"}"));
         fruitOrBerry.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-elderberrybush-yester\",\"name\":\"Yesteryear's Elderberry Seed\"}"));
@@ -1501,7 +1505,7 @@ public class VSpec {
 //        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/bakedbirchdream\",\"name\":\"Baked Birchbark Bream\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/barkbread\",\"name\":\"Bark Bread\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/birthdaycake\",\"name\":\"Birthday Cake\"}"));
-//        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/blueberrypie\",\"name\":\"Blueberry Pie\"}"));
+        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/blueberryslice\",\"name\":\"Blueberry Pie\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/bread\",\"name\":\"Bread\"}"));
 //        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/butterscones\",\"name\":\"Butter Scones\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/carrotcake\",\"name\":\"Carrot Cake\"}"));
@@ -1514,7 +1518,7 @@ public class VSpec {
 //        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/gingerbreadman\",\"name\":\"Gingerbread Man\"}"));
 //        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/gingerbreadwoman\",\"name\":\"Gingerbread Woman\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/greenleafpie\",\"name\":\"Greenleaf Pie\"}"));
-        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/grubpie\",\"name\":\"Grub Pie\"}"));
+        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/grubpie\",\"name\":\"Grubpie\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/honeybun\",\"name\":\"Honeybun\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/jellycake\",\"name\":\"Jelly Cake\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/lardycake\",\"name\":\"Lardy Cake\"}"));
@@ -1523,7 +1527,7 @@ public class VSpec {
 //        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/magpie\",\"name\":\"Magpie (Pie)\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/marrowcake\",\"name\":\"Marrow Cake\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/meatpie\",\"name\":\"Meatpie\"}"));
-//        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/mushroompirozhki\",\"name\":\"Mushroom & Onion Pirozhki\"}"));
+        pies.add(new JSONObject("{\"static\":\"gfx/invobjs/pirozhki\",\"name\":\"Mushroom & Onion Pirozhki\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/mushroompie\",\"name\":\"Mushroom Pie\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/olivebread\",\"name\":\"Olive Bread\"}"));
         pies.add(new JSONObject("{\"static\":\"gfx/invobjs/peapie\",\"name\":\"Pea Pie\"}"));
@@ -1543,6 +1547,7 @@ public class VSpec {
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-barkbread\",\"name\":\"Unbaked Bark Bread\"}"));
 //        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-birthdaycake\",\"name\":\"Unbaked Birthday Cake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-bread\",\"name\":\"Bread Dough\"}"));
+        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-blueberryslice\",\"name\":\"Blueberry Pie Dough\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-carrotcake\",\"name\":\"Unbaked Carrot Cake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-cheesecake\",\"name\":\"Unbaked Cheesecake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-dreamcookies\",\"name\":\"Unbaked Dream Cookies\"}"));
@@ -1550,7 +1555,7 @@ public class VSpec {
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-fishpie\",\"name\":\"Unbaked Fishpie\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-fruitpie\",\"name\":\"Unbaked Fruit Pie\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-greenleafpie\",\"name\":\"Unbaked Greenleaf Pie\"}"));
-        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-grubpie\",\"name\":\"Unbaked Grub Pie\"}"));
+        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-grubpie\",\"name\":\"Unbaked Grubpie\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-honeybun\",\"name\":\"Unbaked Honeybun\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-jellycake\",\"name\":\"Unbaked Jelly Cake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-lardycake\",\"name\":\"Unbaked Lardy Cake\"}"));
@@ -1565,11 +1570,13 @@ public class VSpec {
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-poultrypotpie\",\"name\":\"Unbaked Poultry Pot Pie\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-pumpkinbread\",\"name\":\"Unbaked Pumpkin Bread\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-pumpkinpie\",\"name\":\"Unbaked Pumpkin Pie\"}"));
+        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-pirozhki\",\"name\":\"Mushroom & Onion Pirozhki Dough\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-raisinbuttercake\",\"name\":\"Unbaked Raisin Butter-Cake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-ringofbrodgar\",\"name\":\"Unbaked Ring of Brodgar\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-shepherdspie\",\"name\":\"Unbaked Shepherd's Pie\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-strawberrycake\",\"name\":\"Unbaked Strawberry Cake\"}"));
         doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-onionbread\",\"name\":\"Unbaked Onion Bread\"}"));
+        doughs.add(new JSONObject("{\"static\":\"gfx/invobjs/dough-seedcrispbread\",\"name\":\"Unbaked Seedcrisp Flatbread\"}"));
         categories.put("Dough", doughs);
 
         ArrayList<JSONObject> giantAntItems = new ArrayList<>();
@@ -1694,6 +1701,7 @@ public class VSpec {
         flowers.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/wintergreen\",\"name\":\"Wintergreen\"}"));
         flowers.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/yarrow\",\"name\":\"Yarrow\"}"));
         flowers.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/tansy\",\"name\":\"Tansy\"}"));
+        flowers.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/flower-wild\",\"name\":\"Wildflower\"}"));
         categories.put("Flower", flowers);
 
         ArrayList<JSONObject> fats = new ArrayList<>();
@@ -1736,6 +1744,7 @@ public class VSpec {
         cleanCarcasses.add(new JSONObject("{\"static\":\"gfx/invobjs/woodgrouse-m-cleaned\",\"name\":\"Cleaned Wood Grouse Cock\"}"));
         cleanCarcasses.add(new JSONObject("{\"static\":\"gfx/invobjs/woodgrouse-f-cleaned\",\"name\":\"Cleaned Wood Grouse Hen\"}"));
         categories.put("Clean Animal Carcass", cleanCarcasses);
+
 
         ArrayList<JSONObject> baits = new ArrayList<>();
         baits.addAll(giantAntItems);
@@ -1950,6 +1959,48 @@ public class VSpec {
         fishFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-zope\",\"gfx/invobjs/meat-filet\"],\"name\":\"Filet of Zope\"}"));
         categories.put("Filet of ", fishFilet);
 
+        ArrayList<JSONObject> fishDFilet = new ArrayList<>();
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-abyssgazer\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Abyss Gazer\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-asp\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Asp\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-bass\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Bass\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-bream\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Bream\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-brill\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Brill\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-burbot\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Burbot\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-carp\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Carp\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-catfish\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Catfish\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-caveangler\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Cave Angler\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-cavesculpin\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Cave Sculpin\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-cavelacanth\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Cavelacanth\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-chub\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Chub\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-cod\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Cod\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-eel\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Eel\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-grayling\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Grayling\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-haddock\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Haddock\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-herring\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Herring\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-ide\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Ide\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-lavaret\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Lavaret\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-mackerel\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Mackerel\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-mullet\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Mullet\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-paleghostfish\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Pale Ghostfish\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-perch\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Perch\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-pike\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Pike\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-plaice\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Plaice\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-pomfret\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Pomfret\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-roach\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Roach\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-rosefish\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Rose Fish\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-ruffe\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Ruffe\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-saithe\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Saithe\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-salmon\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Salmon\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-silverbream\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Silver Bream\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-smelt\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Smelt\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-sturgeon\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Sturgeon\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-tench\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Tench\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-trout\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Trout\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-whiting\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Whiting\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-zander\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Zander\"}"));
+        fishDFilet.add(new JSONObject("{\"layer\":[\"gfx/invobjs/meat-zope\",\"gfx/invobjs/meat-dfilet\"],\"name\":\"Dried Filet of Zope\"}"));
+        categories.put("Dried Filet of ", fishDFilet);
+
         ArrayList<JSONObject> rawChevon = new ArrayList<>();
         rawChevon.add(new JSONObject("{\"layer\": [\"gfx/invobjs/meat-raw\", \"gfx/invobjs/meat-goat\"], \"name\": \"Raw Chevon\"}"));
         rawChevon.add(new JSONObject("{\"layer\": [\"gfx/invobjs/meat-raw\", \"gfx/invobjs/meat-wildgoat\"], \"name\": \"Raw Wildgoat\"}"));
@@ -2065,12 +2116,13 @@ public class VSpec {
         categories.put("Fine Feather", fineFeathers);
 
         ArrayList<JSONObject> finerPlantFibres = new ArrayList<>();
-        finerPlantFibres.add(new JSONObject("{\"static\":\"gfx/invobjs/flaxfibre\",\"name\":\"Flax Fibre\"}"));
-        finerPlantFibres.add(new JSONObject("{\"static\":\"gfx/invobjs/hempfibre\",\"name\":\"Hemp Fibre\"}"));
+        finerPlantFibres.add(new JSONObject("{\"static\":\"gfx/invobjs/flaxfibre\",\"name\":\"Flax Fibres\"}"));
+        finerPlantFibres.add(new JSONObject("{\"static\":\"gfx/invobjs/hempfibre\",\"name\":\"Hemp Fibres\"}"));
         categories.put("Finer Plant Fibre", finerPlantFibres);
 
         ArrayList<JSONObject> soil = new ArrayList<>();
         soil.add(new JSONObject("{\"static\":\"gfx/invobjs/soil\",\"name\":\"Soil\"}"));
+        soil.add(new JSONObject("{\"static\":\"gfx/invobjs/earthworm\",\"name\":\"Earthworm\"}"));
         categories.put("Soil", soil);
 
         ArrayList<JSONObject> silkcocoon = new ArrayList<>();
@@ -2326,11 +2378,10 @@ public class VSpec {
         categories.put("Prepared Animal Hide", preparedAnimalHides);
 
         ArrayList<JSONObject> boards = new ArrayList<>();
-        //boards.add(new JSONObject("{\"static\":\"gfx/invobjs/small/board\",\"name\":\"Board\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-acacia\",\"name\":\"Board of Acacia\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-alder\",\"name\":\"Board of Alder\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-almondtree\",\"name\":\"Board of Almond\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-appletree\",\"name\":\"Board of Apple\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-appletree\",\"name\":\"Board of Applewood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-ash\",\"name\":\"Board of Ash\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-aspen\",\"name\":\"Board of Aspen\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-baywillow\",\"name\":\"Board of Bay Willow\"}"));
@@ -2344,13 +2395,13 @@ public class VSpec {
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-carobtree\",\"name\":\"Board of Carob\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-cedar\",\"name\":\"Board of Cedar\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-charredtree\",\"name\":\"Board of Charred (Valhalla)\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-chastetree\",\"name\":\"Board of Chaste\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-checkertree\",\"name\":\"Board of Checker\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-chastetree\",\"name\":\"Board of Chastetreewood\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-checkertree\",\"name\":\"Board of Checkerwood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-cherry\",\"name\":\"Board of Cherry\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-chestnuttree\",\"name\":\"Board of Chestnutwood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-conkertree\",\"name\":\"Board of Conker\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-corkoak\",\"name\":\"Board of Cork Oak\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-crabappletree\",\"name\":\"Board of Crabapple\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-crabappletree\",\"name\":\"Board of Crabapplewood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-cypress\",\"name\":\"Board of Cypress\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-dogwood\",\"name\":\"Board of Dogwood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-dwarfpine\",\"name\":\"Board of Dwarf Pine\"}"));
@@ -2359,7 +2410,7 @@ public class VSpec {
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-fir\",\"name\":\"Board of Fir\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-gloomcap\",\"name\":\"Board of Gloomcap\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-gnomeshat\",\"name\":\"Board of Gnome's Hat\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-goldenchain\",\"name\":\"Board of Golden-chain\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-goldenchain\",\"name\":\"Board of Goldenchain\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-grayalder\",\"name\":\"Board of Gray Alder\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-hazel\",\"name\":\"Board of Hazel\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-hornbeam\",\"name\":\"Board of Hornbeam\"}"));
@@ -2379,11 +2430,11 @@ public class VSpec {
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-olivetree\",\"name\":\"Board of Olive\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-orangetree\",\"name\":\"Board of Orange\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-osier\",\"name\":\"Board of Osier\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-peartree\",\"name\":\"Board of Pear\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-peartree\",\"name\":\"Board of Pearwood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-persimmontree\",\"name\":\"Board of Persimmon\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-pine\",\"name\":\"Board of Pine\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-planetree\",\"name\":\"Board of Plane\"}"));
-        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-plumtree\",\"name\":\"Board of Plum\"}"));
+        boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-plumtree\",\"name\":\"Board of Plumwood\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-poplar\",\"name\":\"Board of Poplar\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-quincetree\",\"name\":\"Board of Quince\"}"));
         boards.add(new JSONObject("{\"static\":\"gfx/invobjs/board-rowan\",\"name\":\"Board of Rowan\"}"));
@@ -2428,7 +2479,7 @@ public class VSpec {
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-acacia\",\"name\":\"Block of Acacia\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-alder\",\"name\":\"Block of Alder\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-almondtree\",\"name\":\"Block of Almond\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-appletree\",\"name\":\"Block of Apple\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-appletree\",\"name\":\"Block of Applewood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-ash\",\"name\":\"Block of Ash\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-aspen\",\"name\":\"Block of Aspen\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-baywillow\",\"name\":\"Block of Bay Willow\"}"));
@@ -2441,13 +2492,13 @@ public class VSpec {
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-buckthorn\",\"name\":\"Block of Buckthorn\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-carobtree\",\"name\":\"Block of Carob\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-cedar\",\"name\":\"Block of Cedar\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-chastetree\",\"name\":\"Block of Chaste Tree\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-checkertree\",\"name\":\"Block of Checker Tree\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-chastetree\",\"name\":\"Block of Chaste Treewood\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-checkertree\",\"name\":\"Block of Checker Treewood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-cherry\",\"name\":\"Block of Cherry\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-chestnuttree\",\"name\":\"Block of Chestnutwood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-conkertree\",\"name\":\"Block of Conker\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-corkoak\",\"name\":\"Block of Cork Oak\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-crabappletree\",\"name\":\"Block of Crabapple\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-crabappletree\",\"name\":\"Block of Crabapplewood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-cypress\",\"name\":\"Block of Cypress\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-dogwood\",\"name\":\"Block of Dogwood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-dwarfpine\",\"name\":\"Block of Dwarf Pine\"}"));
@@ -2476,11 +2527,11 @@ public class VSpec {
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-olivetree\",\"name\":\"Block of Olive\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-orangetree\",\"name\":\"Block of Orange\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-osier\",\"name\":\"Block of Osier\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-peartree\",\"name\":\"Block of Pear\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-peartree\",\"name\":\"Block of Pearwood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-persimmontree\",\"name\":\"Block of Persimmon\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-pine\",\"name\":\"Block of Pine\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-planetree\",\"name\":\"Block of Plane\"}"));
-        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-plumtree\",\"name\":\"Block of Plum\"}"));
+        blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-plumtree\",\"name\":\"Block of Plumwood\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-poplar\",\"name\":\"Block of Poplar\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-quincetree\",\"name\":\"Block of Quince\"}"));
         blocks.add(new JSONObject("{\"static\":\"gfx/invobjs/wblock-rowan\",\"name\":\"Block of Rowan\"}"));
@@ -2607,10 +2658,10 @@ public class VSpec {
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-elderberrybush\",\"name\":\"Elderberry Seed\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-gooseberrybush\",\"name\":\"Gooseberry Seed\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/mulberry\",\"name\":\"Mulberry\"}"));
-        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-raspberrybush\",\"name\":\"Raspberry Bush Seed\"}"));
+        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-raspberrybush\",\"name\":\"Raspberry\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-redcurrant\",\"name\":\"Redcurrant Seed\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-sandthorn\",\"name\":\"Seaberry Seed\"}"));
-        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-blackthorn\",\"name\":\"Sloan Berries Seed\"}"));
+        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-blackthorn\",\"name\":\"Sloan Berries\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/woodstrawberry\",\"name\":\"Wood Strawberry\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/fig\",\"name\":\"Fig\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/grapes\",\"name\":\"Grapes\"}"));
@@ -2644,6 +2695,8 @@ public class VSpec {
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-crabappletree-yester\",\"name\":\"Yesteryear's Crabapple\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/cork\",\"name\":\"Cork\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/applecore\",\"name\":\"Red Apple Core\"}"));
+        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/applegreencore\",\"name\":\"Green Apple Core\"}"));
+        seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/sorbapplecore\",\"name\":\"Sorb Apple Core\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-maple\",\"name\":\"Maple Samara\"}"));
         seedsAndBerries.add(new JSONObject("{\"static\":\"gfx/invobjs/seed-willow\",\"name\":\"Willow Catkin\"}"));
         categories.put("Seed of Tree or Bush", seedsAndBerries);
@@ -2791,7 +2844,6 @@ public class VSpec {
         medicine.add(new JSONObject("{\"static\":\"gfx/invobjs/toadbutter\",\"name\":\"Toad Butter\"}"));
         medicine.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/waybroad\",\"name\":\"Waybroad\"}"));
         medicine.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/yarrow\",\"name\":\"Yarrow\"}"));
-
         categories.put("Medicine", medicine);
 
         // Cheese category with all cheese types
@@ -2845,16 +2897,25 @@ public class VSpec {
         curio.add(new JSONObject("{\"static\":\"gfx/invobjs/tapeworm\",\"name\":\"Disgusting Tapeworm\"}"));
         curio.add(new JSONObject("{\"static\":\"gfx/invobjs/glowshrooms\",\"name\":\"Glowshroom\"}"));
         curio.add(new JSONObject("{\"static\":\"gfx/invobjs/squirrelhair\",\"name\":\"Tuft of Squirrel's Finest Hair\"}"));
+        curio.add(new JSONObject("{\"static\":\"gfx/invobjs/adderfang\",\"name\":\"Adder Fang\"}"));
         curio.add(new JSONObject("{\"static\":\"gfx/invobjs/ghostpipes\",\"name\":\"Ghostpipe\"}"));
+        curio.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/lampstalk\",\"name\":\"Lamp Stalk\"}"));
+        curio.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/mistletoe\",\"name\":\"Mistletoe\"}"));
         curio.add(new JSONObject("{\"static\":\"gfx/invobjs/herbs/cattailhead\",\"name\":\"Cattail Head\"}"));
         categories.put("Curiosities", curio);
 
         ArrayList<JSONObject> Misc = new ArrayList<>();
-        Misc.add(new JSONObject("{\"static\":\"gfx/invobjs/standinggrass\",\"name\":\"Standing Grass\"}"));
         Misc.add(new JSONObject("{\"static\":\"gfx/invobjs/leather\",\"name\":\"Leather\"}"));
         Misc.add(new JSONObject("{\"static\":\"gfx/invobjs/forestlizard\",\"name\":\"Forest Lizard\"}"));
         Misc.add(new JSONObject("{\"static\":\"gfx/invobjs/frog\",\"name\":\"Frog\"}"));
+        Misc.add(new JSONObject("{\"static\":\"gfx/invobjs/toad\",\"name\":\"Toad\"}"));
         categories.put("Miscellaneous", Misc);
+
+        ArrayList<JSONObject> weavableGrass = new ArrayList<>();
+        weavableGrass.add(new JSONObject("{\"static\":\"gfx/invobjs/standinggrass\",\"name\":\"Standing Grass\"}"));
+        weavableGrass.add(new JSONObject("{\"static\":\"gfx/invobjs/reeds\",\"name\":\"Reeds\"}"));
+        weavableGrass.add(new JSONObject("{\"static\":\"gfx/invobjs/straw\",\"name\":\"Straw\"}"));
+        categories.put("Weavable Grass", weavableGrass);
 
         ArrayList<JSONObject> Bark = new ArrayList<>();
         Bark.add(new JSONObject("{\"static\":\"gfx/invobjs/bark-birch\",\"name\":\"Birch Bark\"}"));
@@ -2872,6 +2933,11 @@ public class VSpec {
         intandent.add(new JSONObject("{\"static\":\"gfx/invobjs/intestines\",\"name\":\"Intestines\"}"));
         intandent.add(new JSONObject("{\"static\":\"gfx/invobjs/entrails\",\"name\":\"Entrails\"}"));
         categories.put("Intestines and entrails", intandent);
+
+        ArrayList<JSONObject> pipeweed = new ArrayList<>();
+        pipeweed.add(new JSONObject("{\"static\":\"gfx/invobjs/tobacco-fresh\",\"name\":\"Fresh Leaf of Pipeweed\"}"));
+        pipeweed.add(new JSONObject("{\"static\":\"gfx/invobjs/tobacco-cured\",\"name\":\"Cured Pipeweed\"}"));
+        categories.put("Pipeweed", pipeweed);
     }
 
     public static NAlias getNamesInCategory(String categoryName) {
