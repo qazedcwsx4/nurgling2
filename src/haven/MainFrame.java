@@ -75,7 +75,115 @@ public class MainFrame extends java.awt.Frame implements Console.Directory {
 	initlocale();
 	initawt();
     }
-	
+
+    /**
+     * Initialize preferences file location to use Nurgling directory.
+     * Must be called before any Utils.prefs() access.
+     */
+    private static void initPrefsLocation() {
+	try {
+	    // Use same logic as HashDirCache.findbase() for cross-platform support
+	    Path prefsFile = null;
+
+	    // Windows: %APPDATA%\Nurgling\prefs.properties
+	    windows: {
+		String path = System.getenv("APPDATA");
+		if(path == null)
+		    break windows;
+		Path appdata = Utils.path(path);
+		if(!Files.exists(appdata) || !Files.isDirectory(appdata) ||
+		   !Files.isReadable(appdata) || !Files.isWritable(appdata))
+		    break windows;
+		Path nurglingDir = appdata.resolve("Nurgling");
+		if(!Files.exists(nurglingDir)) {
+		    try {
+			Files.createDirectories(nurglingDir);
+		    } catch(IOException e) {
+			break windows;
+		    }
+		}
+		prefsFile = nurglingDir.resolve("prefs.properties");
+	    }
+
+	    // Unix/Mac fallback: ~/.nurgling/prefs.properties
+	    if(prefsFile == null) {
+		fallback: {
+		    String path = System.getProperty("user.home", null);
+		    if(path == null)
+			break fallback;
+		    Path home = Utils.path(path);
+		    if(!Files.exists(home) || !Files.isDirectory(home) ||
+		       !Files.isReadable(home) || !Files.isWritable(home))
+			break fallback;
+		    Path nurglingDir = home.resolve(".nurgling");
+		    if(!Files.exists(nurglingDir)) {
+			try {
+			    Files.createDirectories(nurglingDir);
+			} catch(IOException e) {
+			    break fallback;
+			}
+		    }
+		    prefsFile = nurglingDir.resolve("prefs.properties");
+		}
+	    }
+
+	    if(prefsFile != null) {
+		// Use absolute path to avoid any resolution issues
+		Path absolutePrefsFile = prefsFile.toAbsolutePath();
+		haven.error.FileLogger.log("Preferences file path (absolute): " + absolutePrefsFile.toString());
+		haven.error.FileLogger.log("Preferences file name: " + absolutePrefsFile.getFileName());
+
+		// Create file with dummy property if it doesn't exist
+		// CRITICAL: Utils.sysprefs() checks if(!sysprefs.isEmpty()) - empty file causes fallback to registry!
+		if(!Files.exists(absolutePrefsFile)) {
+		    try {
+			// Write a dummy property so the file is not empty
+			// This prevents fallback to registry in Utils.prefs()
+			java.util.Properties props = new java.util.Properties();
+			props.setProperty("_nurgling_init", "true");
+			try(OutputStream out = Files.newOutputStream(absolutePrefsFile)) {
+			    props.store(out, "Nurgling Preferences File - DO NOT DELETE");
+			}
+			haven.error.FileLogger.log("Created preferences file with initial property");
+		    } catch(IOException e) {
+			haven.error.FileLogger.logError("Could not create preferences file", e);
+		    }
+		} else {
+		    haven.error.FileLogger.log("Preferences file already exists");
+		    // Check if file is empty and add dummy property if needed
+		    try {
+			if(Files.size(absolutePrefsFile) == 0) {
+			    haven.error.FileLogger.log("WARNING: Preferences file is empty - adding dummy property");
+			    java.util.Properties props = new java.util.Properties();
+			    props.setProperty("_nurgling_init", "true");
+			    try(OutputStream out = Files.newOutputStream(absolutePrefsFile)) {
+				props.store(out, "Nurgling Preferences File - DO NOT DELETE");
+			    }
+			    haven.error.FileLogger.log("Added dummy property to empty file");
+			}
+		    } catch(IOException e) {
+			haven.error.FileLogger.logError("Could not check/fix empty preferences file", e);
+		    }
+		}
+
+		// Set system property BEFORE any Utils.prefs() call - use absolute path
+		String prefsPath = absolutePrefsFile.toString();
+		System.setProperty("haven.prefs", prefsPath);
+		haven.error.FileLogger.log("Set haven.prefs system property to: " + prefsPath);
+
+		// Verify the system property was set correctly
+		String verifyProp = System.getProperty("haven.prefs");
+		haven.error.FileLogger.log("Verified haven.prefs system property: " + verifyProp);
+	    } else {
+		// Fallback: let Java Preferences use default location (registry/userPrefs)
+		haven.error.FileLogger.log("Could not set preferences location, using default");
+	    }
+	} catch(Exception e) {
+	    // Log but don't crash - fallback to default preferences
+	    haven.error.FileLogger.logError("Failed to initialize preferences location", e);
+	}
+    }
+
     DisplayMode findmode(int w, int h) {
 	GraphicsDevice dev = getGraphicsConfiguration().getDevice();
 	if(!dev.isFullScreenSupported())
@@ -497,12 +605,16 @@ public class MainFrame extends java.awt.Frame implements Console.Directory {
     }
     
     public static void main(final String[] args) {
-	config = new NConfig();
-	config.read();
-	
-	// Initialize FileLogger and redirect System.err as early as possible
+	// Initialize FileLogger FIRST for proper error logging
 	haven.error.FileLogger.redirectSystemErr();
 	haven.error.FileLogger.log("Application starting...");
+
+	// CRITICAL: Initialize preferences location BEFORE any other initialization
+	// Must happen before NConfig reads, before any Utils.prefs() call
+	initPrefsLocation();
+
+	config = new NConfig();
+	config.read();
 	
 	/* Set up the error handler as early as humanly possible. */
 	ThreadGroup g = new ThreadGroup("Haven main group");

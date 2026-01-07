@@ -297,14 +297,21 @@ public class Utils {
 	if(prefs == null) {
 	    synchronized(Utils.class) {
 		if(prefs == null) {
-		    Map<Object, Object> sysprefs = sysprefs();
-		    if(!sysprefs.isEmpty()) {
-			prefs = new MapPrefs("haven", sysprefs);
+		    // Check if haven.prefs system property points to a file
+		    String prefsFilePath = System.getProperty("haven.prefs");
+		    if(prefsFilePath != null) {
+			// Use FilePrefs for file-backed persistence with read/write support
+			prefs = new FilePrefs(path(prefsFilePath));
 		    } else {
-			Preferences node = Preferences.userNodeForPackage(Utils.class);
-			if(prefspec.get() != null)
-			    node = node.node(prefspec.get());
-			prefs = node;
+			Map<Object, Object> sysprefs = sysprefs();
+			if(!sysprefs.isEmpty()) {
+			    prefs = new MapPrefs("haven", sysprefs);
+			} else {
+			    Preferences node = Preferences.userNodeForPackage(Utils.class);
+			    if(prefspec.get() != null)
+				node = node.node(prefspec.get());
+			    prefs = node;
+			}
 		    }
 		}
 	    }
