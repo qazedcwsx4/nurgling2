@@ -35,6 +35,7 @@ public class NGameUI extends GameUI
     public boolean nomadMod = false;
     NBotsMenu botsMenu;
     public NAlarmWdg alarmWdg;
+    public StarvationAlertWidget starvationAlertWidget;
     public NQuestInfo questinfo;
     public NGUIInfo guiinfo;
     public NSearchItem itemsForSearch = null;
@@ -43,7 +44,6 @@ public class NGameUI extends GameUI
     public NEditFolderName nefn;
     public NImportStrategyDialog importDialog;
     public Specialisation spec;
-    public RouteSpecialization routespec;
     public BotsInterruptWidget biw;
     public NEquipProxy nep;
     public NBeltProxy nbp;
@@ -155,6 +155,8 @@ public class NGameUI extends GameUI
             add(new NDraggableWidget(calendar, "Calendar", UI.scale(400,90)), calPos);
         }
         add(new NDraggableWidget(alarmWdg = new NAlarmWdg(),"alarm",NStyle.alarm[0].sz().add(NDraggableWidget.delta)));
+        // Starvation alert widget - monitors energy and shows warnings
+        add(starvationAlertWidget = new StarvationAlertWidget());
         nep = new NEquipProxy(getEquipProxySlotsFromConfig());
         add(new NDraggableWidget(nep, "EquipProxy", nep.sz.add(NDraggableWidget.delta)));
         add(new NDraggableWidget(nbp = new NBeltProxy(), "BeltProxy", UI.scale(825, 55)));
@@ -193,10 +195,7 @@ public class NGameUI extends GameUI
         // Position Specialisation relative to areas widget center
         add(spec = new Specialisation(), new Coord(sz.x/2 - spec.sz.x/2, sz.y/2 - spec.sz.y/2));
         spec.hide();
-        // Position RouteSpecialization relative to routes widget center
-        add(routespec = new RouteSpecialization(), new Coord(sz.x/2 - routespec.sz.x/2, sz.y/2 - routespec.sz.y/2));
-        routespec.hide();
-        
+
         // Heavy service widgets
         add(localizedResourceTimerDialog = new LocalizedResourceTimerDialog(), new Coord(200, 200));
         localizedResourceTimerService = new LocalizedResourceTimerService(this, genus);
@@ -806,6 +805,8 @@ public class NGameUI extends GameUI
                             ((NBotsMenu.NButton)item).btn.draw(g.reclip(c.add(1, 1), invsq.sz().sub(2, 2)));
                         else if (item instanceof NScenarioButton)
                             ((NScenarioButton)item).draw(g.reclip(c.add(1, 1), invsq.sz().sub(2, 2)));
+                        else if (item instanceof nurgling.widgets.NEquipmentPresetButton)
+                            ((nurgling.widgets.NEquipmentPresetButton)item).draw(g.reclip(c.add(1, 1), invsq.sz().sub(2, 2)));
                     }
                 } catch (Loading ignored) {
                 }
@@ -826,6 +827,11 @@ public class NGameUI extends GameUI
                         // Handle scenario button execution
                         String scenarioName = path.substring("scenario:".length());
                         ui.core.scenarioManager.executeScenarioByName(scenarioName, ui.gui);
+                        return;
+                    } else if(path.startsWith("equippreset:")) {
+                        // Handle equipment preset button execution
+                        String presetId = path.substring("equippreset:".length());
+                        ui.core.equipmentPresetManager.executePreset(presetId);
                         return;
                     } else {
                         // Handle regular bot button
@@ -861,6 +867,11 @@ public class NGameUI extends GameUI
                         String scenarioName = path.substring("scenario:".length());
                         ui.core.scenarioManager.executeScenarioByName(scenarioName, ui.gui);
                         return true;
+                    } else if(path.startsWith("equippreset:")) {
+                        // Handle equipment preset button execution
+                        String presetId = path.substring("equippreset:".length());
+                        ui.core.equipmentPresetManager.executePreset(presetId);
+                        return true;
                     } else {
                         // Handle regular bot button
                         NBotsMenu.NButton btn = NUtils.getGameUI().botsMenu.find(path);
@@ -892,6 +903,13 @@ public class NGameUI extends GameUI
                         if(scenario.getName().equals(scenarioName)) {
                             return new NScenarioButton(scenario);
                         }
+                    }
+                    return null;
+                } else if(path.startsWith("equippreset:")) {
+                    String presetId = path.substring("equippreset:".length());
+                    nurgling.equipment.EquipmentPreset preset = ui.core.equipmentPresetManager.getPreset(presetId);
+                    if(preset != null) {
+                        return new nurgling.widgets.NEquipmentPresetButton(preset);
                     }
                     return null;
                 } else {
@@ -960,6 +978,13 @@ public class NGameUI extends GameUI
                     NToolBeltProp prop = NToolBeltProp.get(name);
                     // Use scenario name as the identifier for scenarios
                     prop.custom.put(slot, "scenario:" + scenarioBtn.getScenario().getName());
+                    NToolBeltProp.set(name,prop);
+                    return(true);
+                } else if(thing instanceof nurgling.widgets.NEquipmentPresetButton) {
+                    nurgling.widgets.NEquipmentPresetButton presetBtn = (nurgling.widgets.NEquipmentPresetButton)thing;
+                    NToolBeltProp prop = NToolBeltProp.get(name);
+                    // Use preset id as the identifier for equipment presets
+                    prop.custom.put(slot, "equippreset:" + presetBtn.getPreset().getId());
                     NToolBeltProp.set(name,prop);
                     return(true);
                 }

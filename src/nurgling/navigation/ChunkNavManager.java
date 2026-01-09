@@ -1,14 +1,15 @@
 package nurgling.navigation;
 
 import haven.*;
+import nurgling.NConfig;
 import nurgling.NGameUI;
 import nurgling.NUtils;
 import nurgling.areas.NArea;
 import nurgling.overlays.map.MinimapChunkNavRenderer;
-import nurgling.profiles.ProfileManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -25,6 +26,7 @@ public class ChunkNavManager {
     private ChunkNavRecorder recorder;
     private ChunkNavPlanner planner;
     private PortalTraversalTracker portalTracker;
+    private ChunkNavFileStore fileStore;
 
     private boolean enabled = true;
     private boolean initialized = false;
@@ -32,7 +34,7 @@ public class ChunkNavManager {
 
     // Throttle saves to avoid excessive disk writes
     private long lastSaveTime = 0;
-    private static final long SAVE_THROTTLE_MS = 2000; // Min 2 seconds between saves (for testing)
+    private static final long SAVE_THROTTLE_MS = 60000; // Save to disk once per minute
 
     // Throttle grid recording to avoid excessive CPU usage
     private long lastRecordTime = 0;
@@ -47,6 +49,9 @@ public class ChunkNavManager {
     private ExecutorService recordingExecutor;
     private volatile boolean recordingInProgress = false;
     private volatile boolean saveInProgress = false;
+
+    // Guard flag to prevent saves during initialization (prevents Bug #3 - empty graph race condition)
+    private volatile boolean initializationInProgress = false;
 
     // Instance reference - managed by NMapView, not a traditional singleton
     // This static reference exists for backward compatibility with code that
@@ -67,8 +72,9 @@ public class ChunkNavManager {
             return t;
         });
 
-        // Register shutdown hook to save on exit
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+        // NOTE: No shutdown hook - we save every 2 seconds, so losing at most 2 seconds
+        // of data on abrupt shutdown is acceptable. Shutdown hooks caused more problems
+        // than they solved (race conditions with background saves).
 
         // Set static reference for backward compatibility
         instance = this;
@@ -99,24 +105,33 @@ public class ChunkNavManager {
             return;
         }
 
-        // Save previous world data if switching
-        if (initialized && currentGenus != null) {
-            save();
+        // Set guard flag BEFORE any state changes to prevent saves during init
+        initializationInProgress = true;
+
+        try {
+            // Save previous world data if switching
+            if (initialized && currentGenus != null) {
+                save();
+            }
+
+            // Clear renderer cache to avoid stale textures from previous genus
+            MinimapChunkNavRenderer.clearCache();
+
+            this.currentGenus = genus;
+            this.graph = new ChunkNavGraph();
+            this.recorder = new ChunkNavRecorder(graph);
+            this.planner = new ChunkNavPlanner(graph);
+            this.portalTracker = new PortalTraversalTracker(graph, recorder);
+            this.fileStore = new ChunkNavFileStore(genus);
+
+            // Load saved data (with migration if needed)
+            load();
+
+            this.initialized = true;
+        } finally {
+            // Clear guard flag AFTER load completes (even if exception occurs)
+            initializationInProgress = false;
         }
-
-        // Clear renderer cache to avoid stale textures from previous genus
-        MinimapChunkNavRenderer.clearCache();
-
-        this.currentGenus = genus;
-        this.graph = new ChunkNavGraph();
-        this.recorder = new ChunkNavRecorder(graph);
-        this.planner = new ChunkNavPlanner(graph);
-        this.portalTracker = new PortalTraversalTracker(graph, recorder);
-
-        // Load saved data
-        load();
-
-        this.initialized = true;
     }
 
     /**
@@ -151,6 +166,12 @@ public class ChunkNavManager {
      * Runs in a background thread to avoid FPS drops.
      */
     private void recordVisibleGrids() {
+        // Skip if ChunkNav overlay is disabled
+        Object val = NConfig.get(NConfig.Key.chunkNavOverlay);
+        if (!(val instanceof Boolean) || !(Boolean) val) {
+            return;
+        }
+
         // Skip if recording is already in progress
         if (recordingInProgress) {
             return;
@@ -199,6 +220,12 @@ public class ChunkNavManager {
      * teleported (e.g., via Hearth Fire skill) to an unrecorded chunk.
      */
     private void ensurePlayerChunkRecorded() {
+        // Skip if ChunkNav overlay is disabled
+        Object val = NConfig.get(NConfig.Key.chunkNavOverlay);
+        if (!(val instanceof Boolean) || !(Boolean) val) {
+            return;
+        }
+
         try {
             NGameUI gui = NUtils.getGameUI();
             if (gui == null || gui.map == null || gui.map.glob == null || gui.map.glob.map == null) {
@@ -266,8 +293,8 @@ public class ChunkNavManager {
             for (ChunkPath.ChunkWaypoint wp : path.waypoints) {
                 JSONObject wpJson = new JSONObject();
                 wpJson.put("gridId", wp.gridId);
-                wpJson.put("localX", wp.localCoord != null ? wp.localCoord.x : 50);
-                wpJson.put("localY", wp.localCoord != null ? wp.localCoord.y : 50);
+                wpJson.put("localX", wp.localCoord != null ? wp.localCoord.x : CHUNK_SIZE / 2);
+                wpJson.put("localY", wp.localCoord != null ? wp.localCoord.y : CHUNK_SIZE / 2);
                 wpJson.put("type", wp.type.name());
                 if (wp.portal != null) {
                     wpJson.put("portalName", wp.portal.gobName);
@@ -299,8 +326,8 @@ public class ChunkNavManager {
             }
             pathJson.put("segments", segmentsArray);
 
-            // Write to file next to chunknav.nurgling.json
-            Path pathFile = getStoragePath().getParent().resolve("chunknav_path.json");
+            // Write to file next to chunknav directory
+            Path pathFile = fileStore.getChunkDirectory().getParent().resolve("chunknav_path.json");
             Files.write(pathFile, pathJson.toString(2).getBytes(StandardCharsets.UTF_8));
 
         } catch (Exception e) {
@@ -343,6 +370,10 @@ public class ChunkNavManager {
      * Runs on background thread to avoid FPS drops.
      */
     public void saveThrottled() {
+        // Skip save during initialization to prevent Bug #3 (empty graph race condition)
+        if (initializationInProgress) {
+            return;
+        }
         long now = System.currentTimeMillis();
         if (now - lastSaveTime < SAVE_THROTTLE_MS) {
             return; // Too soon since last save
@@ -375,82 +406,124 @@ public class ChunkNavManager {
 
     /**
      * Internal save implementation.
+     * Only saves chunks that were updated within the save throttle window.
      */
     private void saveInternal() {
-        if (!initialized || currentGenus == null) return;
+        // Double-check guard flag as extra safety against Bug #3
+        if (initializationInProgress) return;
+        if (!initialized || currentGenus == null || fileStore == null) return;
 
         try {
-            Path filePath = getStoragePath();
-            Files.createDirectories(filePath.getParent());
+            // Get chunks updated in the last save window
+            List<ChunkNavData> recentChunks = graph.getRecentlyUpdatedChunks(SAVE_THROTTLE_MS);
 
-            JSONObject root = new JSONObject();
-            root.put("version", 1);
-            root.put("genus", currentGenus);
-            root.put("lastSaved", System.currentTimeMillis());
-
-            // Save chunks
-            JSONArray chunksArray = new JSONArray();
-            for (ChunkNavData chunk : graph.getAllChunks()) {
-                chunksArray.put(chunk.toJson());
+            if (recentChunks.isEmpty()) {
+                return; // Nothing to save
             }
-            root.put("chunks", chunksArray);
 
-            // Write to file
-            Files.write(filePath, root.toString(2).getBytes(StandardCharsets.UTF_8));
+            // Save each recently updated chunk
+            for (ChunkNavData chunk : recentChunks) {
+                try {
+                    fileStore.saveChunk(chunk);
+                } catch (IOException e) {
+                    System.err.println("ChunkNav: Failed to save chunk " + chunk.gridId + ": " + e.getMessage());
+                }
+            }
 
         } catch (Exception e) {
-            // Ignore save errors
+            System.err.println("ChunkNav: Failed to save data: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     /**
      * Load navigation data from disk.
+     * Loads from binary chunk files, with migration from old JSON format if needed.
      */
     public void load() {
-        if (currentGenus == null) {
+        if (currentGenus == null || fileStore == null) {
             return;
         }
 
         try {
-            Path filePath = getStoragePath();
-            if (!Files.exists(filePath)) {
-                return;
+            // Clean up any orphaned temp files
+            fileStore.cleanupTempFiles();
+
+            // Check if we need to migrate from old JSON format
+            if (fileStore.needsMigration()) {
+                System.out.println("ChunkNav: Migrating from JSON to binary format...");
+                migrateFromJson();
             }
 
-            String content = new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
-            JSONObject root = new JSONObject(content);
+            // Load all chunk files from directory
+            List<ChunkNavData> loadedChunks = fileStore.loadAllChunks();
 
-            // Verify genus matches
-            String savedGenus = root.optString("genus", "");
-            if (!currentGenus.equals(savedGenus)) {
-                return;
-            }
-
-            // Load chunks
-            JSONArray chunksArray = root.getJSONArray("chunks");
-            for (int i = 0; i < chunksArray.length(); i++) {
-                try {
-                    ChunkNavData chunk = ChunkNavData.fromJson(chunksArray.getJSONObject(i));
-                    graph.addChunk(chunk);
-                } catch (Exception e) {
-                    // Skip invalid chunks
-                }
+            // Add chunks to graph
+            for (ChunkNavData chunk : loadedChunks) {
+                graph.addChunk(chunk);
             }
 
             // Rebuild connections after loading all chunks
             graph.rebuildAllConnections();
 
+            System.out.println("ChunkNav: Loaded " + loadedChunks.size() + " chunks from binary format");
+
         } catch (Exception e) {
-            // Failed to load, start fresh
+            System.err.println("ChunkNav: Failed to load data: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     /**
-     * Get the storage path for navigation data.
+     * Migrate from old JSON format to new binary format.
      */
-    private Path getStoragePath() {
-        ProfileManager pm = new ProfileManager(currentGenus);
-        return pm.getConfigPath(STORAGE_FILENAME);
+    private void migrateFromJson() {
+        Path oldJsonPath = fileStore.getOldJsonFilePath();
+        if (!Files.exists(oldJsonPath)) {
+            return;
+        }
+
+        try {
+            String content = new String(Files.readAllBytes(oldJsonPath), StandardCharsets.UTF_8);
+            JSONObject root = new JSONObject(content);
+
+            // Verify genus matches
+            String savedGenus = root.optString("genus", "");
+            if (!currentGenus.equals(savedGenus)) {
+                System.err.println("ChunkNav: Migration skipped - genus mismatch");
+                return;
+            }
+
+            // Load and convert chunks
+            JSONArray chunksArray = root.getJSONArray("chunks");
+            int migratedCount = 0;
+            int errorCount = 0;
+
+            for (int i = 0; i < chunksArray.length(); i++) {
+                try {
+                    ChunkNavData chunk = ChunkNavData.fromJson(chunksArray.getJSONObject(i));
+                    fileStore.saveChunk(chunk);
+                    migratedCount++;
+                } catch (Exception e) {
+                    errorCount++;
+                    if (errorCount <= 3) {
+                        System.err.println("ChunkNav: Failed to migrate chunk " + i + ": " + e.getMessage());
+                    }
+                }
+            }
+
+            System.out.println("ChunkNav: Migrated " + migratedCount + " chunks" +
+                (errorCount > 0 ? " (" + errorCount + " errors)" : ""));
+
+            // Delete old JSON file after successful migration
+            if (migratedCount > 0 && errorCount == 0) {
+                fileStore.deleteOldJsonFile();
+            }
+
+        } catch (Exception e) {
+            System.err.println("ChunkNav: Migration failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -458,7 +531,6 @@ public class ChunkNavManager {
      */
     public void clear() {
         graph.clear();
-        recorder.clearSession();
     }
 
     /**
@@ -481,16 +553,8 @@ public class ChunkNavManager {
         return graph;
     }
 
-    public ChunkNavRecorder getRecorder() {
-        return recorder;
-    }
-
     public ChunkNavPlanner getPlanner() {
         return planner;
-    }
-
-    public PortalTraversalTracker getPortalTracker() {
-        return portalTracker;
     }
 
     public boolean isEnabled() {
@@ -505,18 +569,13 @@ public class ChunkNavManager {
         return initialized;
     }
 
-    public String getCurrentGenus() {
-        return currentGenus;
-    }
-
     /**
-     * Shutdown and save.
+     * Shutdown the executor (for explicit cleanup if needed).
+     * Note: No automatic save here - we save every 2 seconds via tick(),
+     * so losing at most 2 seconds of data is acceptable.
      */
     public void shutdown() {
-        if (initialized) {
-            save();
-            initialized = false;
-        }
+        initialized = false;
 
         // Shutdown recording executor
         if (recordingExecutor != null) {
@@ -528,37 +587,6 @@ public class ChunkNavManager {
             } catch (InterruptedException e) {
                 recordingExecutor.shutdownNow();
             }
-        }
-    }
-
-    /**
-     * Force update connections between all visible chunks.
-     */
-    public void updateAllConnections() {
-        if (!initialized) return;
-
-        try {
-            MCache mcache = NUtils.getGameUI().map.glob.map;
-            List<ChunkNavData> visibleChunks = new ArrayList<>();
-
-            synchronized (mcache.grids) {
-                for (MCache.Grid grid : mcache.grids.values()) {
-                    ChunkNavData chunk = graph.getChunk(grid.id);
-                    if (chunk != null) {
-                        visibleChunks.add(chunk);
-                    }
-                }
-            }
-
-            // Update connections between all visible chunk pairs
-            for (int i = 0; i < visibleChunks.size(); i++) {
-                for (int j = i + 1; j < visibleChunks.size(); j++) {
-                    recorder.updateEdgeConnectivity(visibleChunks.get(i), visibleChunks.get(j));
-                }
-            }
-
-        } catch (Exception e) {
-            // Ignore
         }
     }
 

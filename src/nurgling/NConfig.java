@@ -5,7 +5,6 @@ import nurgling.areas.*;
 import nurgling.conf.*;
 import nurgling.conf.QuickActionPreset;
 import nurgling.profiles.ProfileManager;
-import nurgling.routes.Route;
 import nurgling.scenarios.Scenario;
 import nurgling.widgets.NCornerMiniMap;
 import org.json.*;
@@ -132,6 +131,7 @@ public class NConfig
         bbDisplayMode,
         showBeehiveRadius,
         showTroughRadius,
+        showMoundBedRadius,
         showDamageShields,
         disableTileSmoothing,
         disableTileTransitions,
@@ -167,7 +167,16 @@ public class NConfig
         studyInfoOverlay,
         progressOverlay,
         volumeOverlay,
-        equipProxySlots
+        equipProxySlots,
+        equipmentBotConfig,
+        // Starvation alert settings
+        starvationAlertEnabled,
+        starvationPopup1Threshold,
+        starvationPopup2Threshold,
+        starvationVignetteStartThreshold,
+        starvationVignetteCriticalThreshold,
+        starvationSoundThreshold,
+        starvationSoundInterval
     }
 
     public enum BBDisplayMode
@@ -400,6 +409,7 @@ public class NConfig
         // Object radius overlays - simple boolean flags
         conf.put(Key.showBeehiveRadius, false);
         conf.put(Key.showTroughRadius, false);
+        conf.put(Key.showMoundBedRadius, false);
 
         // Damage shields display
         conf.put(Key.showDamageShields, true);
@@ -413,8 +423,8 @@ public class NConfig
         
         // Parasite bot settings
         conf.put(Key.parasiteBotEnabled, false);
-        conf.put(Key.leechAction, "ground");  // "ground" or "inventory"
-        conf.put(Key.tickAction, "ground");   // "ground" or "inventory"
+        conf.put(Key.leechAction, "ground");  // "nothing", "ground" or "inventory"
+        conf.put(Key.tickAction, "ground");   // "nothing", "ground" or "inventory"
         
         // Safety settings - auto hearth/logout on unknown players
         conf.put(Key.autoHearthOnUnknown, false);
@@ -480,6 +490,15 @@ public class NConfig
         defaultEquipProxySlots.add(7);  // HAND_RIGHT
         defaultEquipProxySlots.add(5);  // BELT
         conf.put(Key.equipProxySlots, defaultEquipProxySlots);
+
+        // Starvation alert settings
+        conf.put(Key.starvationAlertEnabled, true);
+        conf.put(Key.starvationPopup1Threshold, 2700);  // First warning popup (0 to disable)
+        conf.put(Key.starvationPopup2Threshold, 2500);  // Critical warning popup (0 to disable)
+        conf.put(Key.starvationVignetteStartThreshold, 2300);  // Vignette starts (0 to disable)
+        conf.put(Key.starvationVignetteCriticalThreshold, 2000);  // Vignette intensifies (0 to disable)
+        conf.put(Key.starvationSoundThreshold, 2000);  // Sound alarm threshold (0 to disable)
+        conf.put(Key.starvationSoundInterval, 10000);  // Sound interval in milliseconds
     }
 
 
@@ -564,21 +583,7 @@ public class NConfig
         }
     }
 
-    public static void needRoutesUpdate()
-    {
-        // Only update profile-specific config (routes are per-world)
-        try {
-            if (nurgling.NUtils.getGameUI() != null && nurgling.NUtils.getUI() != null && nurgling.NUtils.getUI().core != null) {
-                nurgling.NUtils.getUI().core.config.isRoutesUpd = true;
-            }
-        } catch (Exception e) {
-            // Fallback to global config if profile config not available
-            if (current != null)
-            {
-                current.isRoutesUpd = true;
-            }
-        }
-    }
+
 
     public static void needExploredUpdate()
     {
@@ -714,6 +719,14 @@ public class NConfig
      */
     public String getScenariosPath() {
         return ((HashDirCache) ResCache.global).base + "\\..\\" + "scenarios.nurgling.json";
+    }
+
+    /**
+     * Gets the dynamic path for equipment presets configuration file
+     * Note: equipment presets are always stored globally, not per-profile
+     */
+    public String getEquipmentPresetsPath() {
+        return ((HashDirCache) ResCache.global).base + "\\..\\" + "equipment_presets.nurgling.json";
     }
 
     @SuppressWarnings("unchecked")
@@ -1214,83 +1227,6 @@ public class NConfig
                     newArea.id = maxId + 1;
                     mapView.glob.map.areas.put(newArea.id, newArea);
                 }
-            }
-        }
-    }
-
-    public void writeRoutes(String customPath)
-    {
-        if(NUtils.getGameUI()!=null && NUtils.getGameUI().map!=null)
-        {
-            // If customPath is provided, write to file (for manual export only)
-            if (customPath != null) {
-                writeRoutesToFile(customPath);
-                return;
-            }
-
-            // If DB is enabled - do NOT batch export!
-            // Routes are saved individually when recorded through RouteAutoRecorder.
-            // This prevents local files from overwriting database.
-            if ((Boolean) NConfig.get(NConfig.Key.ndbenable)) {
-                current.isRoutesUpd = false;
-                // Individual routes are saved via RouteService.saveRouteAsync()
-                // when they are actually recorded through the client
-                return;
-            }
-
-            // DB not enabled - write to file
-            writeRoutesToFile(getRoutesPath());
-        }
-    }
-
-    private void writeRoutesToFile(String path) {
-        JSONObject main = new JSONObject();
-        JSONArray jroutes = new JSONArray();
-        for(Route route : ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().values())
-        {
-            jroutes.put(route.toJson());
-        }
-        main.put("routes",jroutes);
-
-        try
-        {
-            FileWriter f = new FileWriter(path, StandardCharsets.UTF_8);
-            main.write(f);
-            f.close();
-            this.isRoutesUpd = false;
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void mergeRoutes(File file) {
-        StringBuilder contentBuilder = new StringBuilder();
-        try (Stream<String> stream = Files.lines(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8))
-        {
-            stream.forEach(s -> contentBuilder.append(s).append("\n"));
-        }
-        catch (IOException ignore)
-        {
-        }
-
-        if (!contentBuilder.toString().isEmpty()) {
-            JSONObject main = new JSONObject(contentBuilder.toString());
-            JSONArray array = (JSONArray) main.get("routes");
-            for (int i = 0; i < array.length(); i++) {
-                Route a = new Route((JSONObject) array.get(i));
-                int id = 1;
-                for (Route route : ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().values()) {
-                    if (route.name.equals(a.name)) {
-                        a.name = "Other_" + a.name;
-                    }
-                    if (route.id >= id) {
-                        id = route.id + 1;
-                    }
-                }
-                a.id = id;
-                ((NMapView) NUtils.getGameUI().map).routeGraphManager.getRoutes().put(a.id, a);
             }
         }
     }

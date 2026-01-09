@@ -1,6 +1,7 @@
 package nurgling.navigation;
 
 import haven.*;
+import nurgling.NConfig;
 import nurgling.NCore;
 import nurgling.NUtils;
 import nurgling.tasks.GateDetector;
@@ -8,6 +9,8 @@ import nurgling.tools.Finder;
 import nurgling.tools.NAlias;
 
 import java.util.*;
+
+import static nurgling.navigation.ChunkNavConfig.*;
 
 /**
  * Tracks when the player traverses portals (doors, stairs, cellars, mines)
@@ -97,6 +100,12 @@ public class PortalTraversalTracker {
      * Safe to call frequently - internally throttled.
      */
     public void tick() {
+        // Skip if ChunkNav overlay is disabled
+        Object val = NConfig.get(NConfig.Key.chunkNavOverlay);
+        if (!(val instanceof Boolean) || !(Boolean) val) {
+            return;
+        }
+
         long now = System.currentTimeMillis();
         if (now - lastCheckTime < CHECK_INTERVAL_MS) {
             return;
@@ -285,8 +294,8 @@ public class PortalTraversalTracker {
             }
         }
 
-        // Use provided localCoord or default to center
-        Coord portalCoord = localCoord != null ? localCoord : new Coord(50, 50);
+        // Use provided localCoord or default to center (in tile coordinates 0-99)
+        Coord portalCoord = localCoord != null ? localCoord : new Coord(CHUNK_SIZE / 2, CHUNK_SIZE / 2);
 
         // Find or create the portal - check by hash first, then by position+name
         // Do NOT use findPortalByName - that causes all buildings with same name to merge
@@ -450,7 +459,7 @@ public class PortalTraversalTracker {
             synchronized (mcache.grids) {
                 for (MCache.Grid grid : mcache.grids.values()) {
                     if (grid.id == gridId) {
-                        Coord gridCoord = grid.ul.div(100);
+                        Coord gridCoord = grid.ul.div(CHUNK_SIZE);
                         ChunkNavData chunk = new ChunkNavData(gridId, gridCoord, grid.ul);
                         graph.addChunk(chunk);
                         return chunk;
