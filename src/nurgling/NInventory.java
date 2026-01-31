@@ -6,6 +6,7 @@ import haven.res.ui.stackinv.ItemStack;
 import haven.res.ui.tt.slot.Slotted;
 import haven.res.ui.tt.stackn.Stack;
 import monitoring.ItemWatcher;
+import nurgling.actions.SortInventory;
 import nurgling.iteminfo.NFoodInfo;
 import nurgling.tasks.*;
 import nurgling.tools.*;
@@ -81,6 +82,77 @@ public class NInventory extends Inventory
         super.added();
         // Add Plan button for Study Desk after the widget is added to its parent
         nurgling.widgets.StudyDeskInventoryExtension.addPlanButtonIfStudyDesk(this);
+        // Add Sort button for container inventories (not main inventory)
+        addSortButtonIfContainer();
+    }
+    
+    /**
+     * Add sort button to window title bar (left of close button)
+     * Used for both main inventory and container inventories
+     */
+    private void addSortButtonToTitleBar() {
+        // Get parent window
+        Window wnd = getparent(Window.class);
+        if (wnd == null || wnd.deco == null) {
+            return;
+        }
+        
+        // Skip excluded windows
+        String caption = wnd.cap;
+        if (caption != null) {
+            for (String excluded : SortInventory.EXCLUDE_WINDOWS) {
+                if (caption.contains(excluded)) {
+                    return;
+                }
+            }
+        }
+        
+        // Check if deco is DefaultDeco with cbtn
+        if (!(wnd.deco instanceof Window.DefaultDeco)) {
+            return;
+        }
+        
+        Window.DefaultDeco deco = (Window.DefaultDeco) wnd.deco;
+        
+        // Add sort button to deco, left of close button
+        // The button updates its position in tick() to stay left of cbtn
+        NInventory thisInv = this;
+        IButton sortBtn = new IButton(NStyle.sorti[0].back, NStyle.sorti[1].back, NStyle.sorti[2].back) {
+            @Override
+            public void click() {
+                SortInventory.sort(thisInv);
+            }
+            
+            @Override
+            public void tick(double dt) {
+                super.tick(dt);
+                // Keep position updated relative to cbtn
+                if (deco.cbtn != null) {
+                    Coord cbtnPos = deco.cbtn.c;
+                    c = new Coord(cbtnPos.x - sz.x - UI.scale(2), cbtnPos.y);
+                }
+            }
+        };
+        sortBtn.settip("Sort Inventory");
+        deco.add(sortBtn);
+        
+        // Initial position left of close button
+        Coord cbtnPos = deco.cbtn.c;
+        sortBtn.c = new Coord(cbtnPos.x - sortBtn.sz.x - UI.scale(2), cbtnPos.y);
+    }
+    
+    /**
+     * Add sort button to container inventory windows (not main inventory)
+     * Button is placed in window title bar, left of the close button
+     */
+    private void addSortButtonIfContainer() {
+        // Skip if this is the main inventory (it has its own sort button via installMainInv)
+        NGameUI gui = NUtils.getGameUI();
+        if (gui == null || this == gui.maininv) {
+            return;
+        }
+        
+        addSortButtonToTitleBar();
     }
 
     public enum QualityType {
@@ -615,6 +687,9 @@ public class NInventory extends Inventory
                        }
                    }
                 , new Coord(-gildingi[0].sz().x + UI.scale(2), UI.scale(27)));
+        
+        // Add sort button to main inventory window title bar
+        addSortButtonToTitleBar();
 
 
         checkBoxForRight = new ICheckBox(collapseiRight[0], collapseiRight[1], collapseiRight[2], collapseiRight[3]) {
@@ -658,7 +733,7 @@ public class NInventory extends Inventory
                 Slotted.show = val;
             }
         }, toggles.atl);
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/gilding/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/gilding/u").flayer(Resource.tooltip).text());
         ((ICheckBox)pw).a = Slotted.show;
         pw = toggles.add(new ICheckBox(vari[0], vari[1], vari[2], vari[3]) {
             @Override
@@ -669,7 +744,7 @@ public class NInventory extends Inventory
                 NConfig.set(NConfig.Key.showVarity, val);
             }
         }, pw.pos("bl").add(UI.scale(new Coord(0, 5))));
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/var/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/var/u").flayer(Resource.tooltip).text());
         NFoodInfo.show = (Boolean)NConfig.get(NConfig.Key.showVarity);
         ((ICheckBox)pw).a = NFoodInfo.show;
 
@@ -681,7 +756,7 @@ public class NInventory extends Inventory
                 NConfig.set(NConfig.Key.showInventoryNums, val);
             }
         }, pw.pos("ur").add(UI.scale(new Coord(5, 0))));
-        rpw.settip(Resource.remote().loadwait("nurgling/hud/buttons/numbering/u").flayer(Resource.tooltip).t);
+        rpw.settip(Resource.remote().loadwait("nurgling/hud/buttons/numbering/u").flayer(Resource.tooltip).text());
         ((ICheckBox)rpw).a = (Boolean)NConfig.get(NConfig.Key.showInventoryNums);
 
         pw = toggles.add(new ICheckBox(stacki[0], stacki[1], stacki[2], stacki[3]) {
@@ -692,7 +767,7 @@ public class NInventory extends Inventory
             }
         }, pw.pos("bl").add(UI.scale(new Coord(0, 5))));
         ((ICheckBox)pw).a = Stack.show;
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/stack/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/stack/u").flayer(Resource.tooltip).text());
 
         bundle = toggles.add(new ICheckBox(bundlei[0], bundlei[1], bundlei[2], bundlei[3]) {
             @Override
@@ -701,7 +776,7 @@ public class NInventory extends Inventory
                 pagBundle.use(new MenuGrid.Interaction(1, 0));
             }
         }, pw.pos("ur").add(UI.scale(new Coord(5, 0))));
-        bundle.settip(Resource.remote().loadwait("nurgling/hud/buttons/bundle/u").flayer(Resource.tooltip).t);
+        bundle.settip(Resource.remote().loadwait("nurgling/hud/buttons/bundle/u").flayer(Resource.tooltip).text());
 
         pw = toggles.add(new ICheckBox(autoflower[0], autoflower[1], autoflower[2], autoflower[3]) {
             @Override
@@ -710,7 +785,7 @@ public class NInventory extends Inventory
                 NConfig.set(NConfig.Key.autoFlower, val);
             }
         }, pw.pos("bl").add(UI.scale(new Coord(0, 5))));
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/autoflower/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/autoflower/u").flayer(Resource.tooltip).text());
         ((ICheckBox)pw).a = (Boolean)NConfig.get(NConfig.Key.autoFlower);
         pw = toggles.add(new ICheckBox(autosplittor[0], autosplittor[1], autosplittor[2], autosplittor[3]) {
             @Override
@@ -719,7 +794,7 @@ public class NInventory extends Inventory
                 NConfig.set(NConfig.Key.autoSplitter, val);
             }
         }, pw.pos("bl").add(UI.scale(new Coord(0, 5))));
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/autosplittor/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/autosplittor/u").flayer(Resource.tooltip).text());
         ((ICheckBox)pw).a = (Boolean)NConfig.get(NConfig.Key.autoSplitter);
 
         pw = toggles.add(new ICheckBox(dropperi[0], dropperi[1], dropperi[2], dropperi[3]) {
@@ -729,7 +804,7 @@ public class NInventory extends Inventory
                 NConfig.set(NConfig.Key.autoDropper, val);
             }
         }, pw.pos("bl").add(UI.scale(new Coord(0, 5))));
-        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/dropper/u").flayer(Resource.tooltip).t);
+        pw.settip(Resource.remote().loadwait("nurgling/hud/buttons/dropper/u").flayer(Resource.tooltip).text());
         ((ICheckBox)pw).a = (Boolean)NConfig.get(NConfig.Key.autoDropper);
 
         toggles.pack();

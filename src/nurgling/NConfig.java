@@ -97,8 +97,9 @@ public class NConfig
         smokeprop,
         worldexplorerprop,
         questNotified, lpassistent, fishingsettings,
-        serverNode, serverUser, serverPass, ndbenable, harvestautorefill, cleanupQContainers, autoEquipTravellersSacks, qualityGrindSeedingPatter, postgres, sqlite, dbFilePath, simplecrops,
+        serverNode, serverUser, serverPass, postgresMaxConnections, ndbenable, dbStatsOverlay, harvestautorefill, cleanupQContainers, autoEquipTravellersSacks, qualityGrindSeedingPatter, postgres, sqlite, dbFilePath, simplecrops,
         temsmarktime, exploredAreaEnable, chunkNavOverlay, player_box, player_fov, temsmarkdist, tempmark, tempmarkIgnoreDist, gridbox, useGlobalPf, useHFinGlobalPF, boxFillColor, boxEdgeColor, boxLineWidth, ropeAfterFeeding, ropeAfterTaiming, eatingConf, deersprop,dropConf, printpfmap, fonts,
+        areaRankPresets,  // Map of areaId -> Map of animalType -> presetName
         shortCupboards,
         shortWalls,
         decalsOnTop,
@@ -176,7 +177,9 @@ public class NConfig
         starvationVignetteStartThreshold,
         starvationVignetteCriticalThreshold,
         starvationSoundThreshold,
-        starvationSoundInterval
+        starvationSoundInterval,
+        // Localization
+        language
     }
 
     public enum BBDisplayMode
@@ -259,6 +262,7 @@ public class NConfig
         conf.put(Key.simplecrops, true);
         conf.put(Key.simpleInspect, false);
         conf.put(Key.ndbenable, false);
+        conf.put(Key.dbStatsOverlay, false);
         conf.put(Key.harvestautorefill, false);
         conf.put(Key.cleanupQContainers, false);
         conf.put(Key.autoEquipTravellersSacks, false);
@@ -267,6 +271,7 @@ public class NConfig
         conf.put(Key.useHFinGlobalPF, false);
         conf.put(Key.sqlite, false);
         conf.put(Key.postgres, false);
+        conf.put(Key.postgresMaxConnections, 5);
         conf.put(Key.dbFilePath, "");
         conf.put(Key.serverNode, "");
         conf.put(Key.serverPass, "");
@@ -508,9 +513,11 @@ public class NConfig
     private long lastAreasChangeTime = 0;
     private static final long AREAS_DEBOUNCE_MS = 3000; // 3 seconds debounce for area changes
     private boolean isExploredUpd = false;
+    private long lastExploredChangeTime = 0;
+    private static final long EXPLORED_DEBOUNCE_MS = 5000; // 5 seconds debounce for explored area changes
     private boolean isRoutesUpd = false;
     private boolean isScenariosUpd = false;
-    String path = ((HashDirCache) ResCache.global).base + "\\..\\" + "nconfig.nurgling.json";
+    String path = NUtils.getDataFile("nconfig.nurgling.json");
 
     public boolean isUpdated()
     {
@@ -536,7 +543,15 @@ public class NConfig
         return isScenariosUpd;
     }
 
-    public boolean isExploredUpdated() { return isExploredUpd; }
+    public boolean isExploredUpdated() {
+        // Only return true if explored area changed AND debounce period has passed
+        // This batches multiple rapid changes into a single file update
+        if (isExploredUpd && lastExploredChangeTime > 0) {
+            long elapsed = System.currentTimeMillis() - lastExploredChangeTime;
+            return elapsed >= EXPLORED_DEBOUNCE_MS;
+        }
+        return false;
+    }
 
     public static Object get(Key key)
     {
@@ -588,17 +603,67 @@ public class NConfig
     public static void needExploredUpdate()
     {
         // Only update profile-specific config (explored area is per-world)
+        // Record timestamp for debouncing - actual save happens after EXPLORED_DEBOUNCE_MS of inactivity
+        long now = System.currentTimeMillis();
         try {
             if (nurgling.NUtils.getGameUI() != null && nurgling.NUtils.getUI() != null && nurgling.NUtils.getUI().core != null) {
                 nurgling.NUtils.getUI().core.config.isExploredUpd = true;
+                nurgling.NUtils.getUI().core.config.lastExploredChangeTime = now;
             }
         } catch (Exception e) {
             // Fallback to global config if profile config not available
             if (current != null)
             {
                 current.isExploredUpd = true;
+                current.lastExploredChangeTime = now;
             }
         }
+    }
+
+    // Area rank preset bindings - stored separately from areas (which sync from DB)
+    @SuppressWarnings("unchecked")
+    public static String getAreaRankPreset(int areaId, String animalType) {
+        Map<Integer, Map<String, String>> presets = (Map<Integer, Map<String, String>>) get(Key.areaRankPresets);
+        if (presets == null) return null;
+        Map<String, String> areaPresets = presets.get(areaId);
+        if (areaPresets == null) return null;
+        return areaPresets.get(animalType);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void setAreaRankPreset(int areaId, String animalType, String presetName) {
+        Map<Integer, Map<String, String>> presets = (Map<Integer, Map<String, String>>) get(Key.areaRankPresets);
+        if (presets == null) {
+            presets = new HashMap<>();
+        }
+        Map<String, String> areaPresets = presets.computeIfAbsent(areaId, k -> new HashMap<>());
+        if (presetName == null || presetName.isEmpty()) {
+            areaPresets.remove(animalType);
+            if (areaPresets.isEmpty()) {
+                presets.remove(areaId);
+            }
+        } else {
+            areaPresets.put(animalType, presetName);
+        }
+        set(Key.areaRankPresets, presets);
+    }
+
+    /**
+     * Get all area IDs that have a rank preset configured for a specific animal type
+     * @param animalType Animal type (cows, goats, sheeps, pigs, horses, deers)
+     * @return Set of area IDs with configured presets
+     */
+    @SuppressWarnings("unchecked")
+    public static Set<Integer> getAreasWithRankPreset(String animalType) {
+        Set<Integer> result = new HashSet<>();
+        Map<Integer, Map<String, String>> presets = (Map<Integer, Map<String, String>>) get(Key.areaRankPresets);
+        if (presets == null) return result;
+        for (Map.Entry<Integer, Map<String, String>> entry : presets.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().containsKey(animalType)) {
+                result.add(entry.getKey());
+            }
+        }
+        return result;
     }
 
     public static NConfig current;
@@ -646,7 +711,7 @@ public class NConfig
         if (profileManager != null) {
             return profileManager.getConfigPathString(filename);
         }
-        return ((HashDirCache) ResCache.global).base + "\\..\\" + filename;
+        return NUtils.getDataFile(filename);
     }
 
     /**
@@ -718,7 +783,7 @@ public class NConfig
      * Note: scenarios are always stored globally, not per-profile
      */
     public String getScenariosPath() {
-        return ((HashDirCache) ResCache.global).base + "\\..\\" + "scenarios.nurgling.json";
+        return NUtils.getDataFile("scenarios.nurgling.json");
     }
 
     /**
@@ -726,7 +791,23 @@ public class NConfig
      * Note: equipment presets are always stored globally, not per-profile
      */
     public String getEquipmentPresetsPath() {
-        return ((HashDirCache) ResCache.global).base + "\\..\\" + "equipment_presets.nurgling.json";
+        return NUtils.getDataFile("equipment_presets.nurgling.json");
+    }
+
+    /**
+     * Gets the dynamic path for craft presets configuration file
+     * Note: craft presets are always stored globally, not per-profile
+     */
+    public String getCraftPresetsPath() {
+        return NUtils.getDataFile("craft_presets.nurgling.json");
+    }
+
+    /**
+     * Gets the dynamic path for custom icons configuration file
+     * Note: custom icons are always stored globally, not per-profile
+     */
+    public String getCustomIconsPath() {
+        return ((HashDirCache) ResCache.global).base + "\\..\\" + "custom_icons.nurgling.json";
     }
 
     @SuppressWarnings("unchecked")
@@ -897,6 +978,25 @@ public class NConfig
                                     conf.put(Key.valueOf(entry.getKey()), entry.getValue());
                                     break;
                             }
+                        } else if (entry.getKey().equals(Key.areaRankPresets.name())) {
+                            // Special handling for areaRankPresets: convert String keys to Integer
+                            Map<Integer, Map<String, String>> converted = new HashMap<>();
+                            for (Map.Entry<String, Object> areaEntry : hobj.entrySet()) {
+                                try {
+                                    int areaId = Integer.parseInt(areaEntry.getKey());
+                                    if (areaEntry.getValue() instanceof Map) {
+                                        Map<String, String> animalPresets = new HashMap<>();
+                                        Map<String, Object> rawPresets = (Map<String, Object>) areaEntry.getValue();
+                                        for (Map.Entry<String, Object> presetEntry : rawPresets.entrySet()) {
+                                            if (presetEntry.getValue() instanceof String) {
+                                                animalPresets.put(presetEntry.getKey(), (String) presetEntry.getValue());
+                                            }
+                                        }
+                                        converted.put(areaId, animalPresets);
+                                    }
+                                } catch (NumberFormatException ignore) {}
+                            }
+                            conf.put(Key.areaRankPresets, converted);
                         } else {
                             conf.put(Key.valueOf(entry.getKey()), entry.getValue());
                         }
@@ -1081,6 +1181,7 @@ public class NConfig
                 // Merge with existing data on disk to prevent data loss when multiple clients run
                 ((NCornerMiniMap)NUtils.getGameUI().mmap).exploredArea.mergeAndSaveToFile(filePath);
                 this.isExploredUpd = false;
+                this.lastExploredChangeTime = 0;
             }
             catch (Exception e)
             {

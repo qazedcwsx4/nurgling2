@@ -52,6 +52,7 @@ public class NGameUI extends GameUI
     private CrimeStatusBuff crimeBuff = null;
     private AllowVisitingStatusBuff allowVisitingBuff = null;
     public NRecentActionsPanel recentActionsPanel;
+    public DrinkMeter drinkMeter;
     public LocalizedResourceTimersWindow localizedResourceTimersWindow = null;
     private LocalizedResourceTimerDialog localizedResourceTimerDialog = null;
     public LocalizedResourceTimerService localizedResourceTimerService;
@@ -66,6 +67,7 @@ public class NGameUI extends GameUI
     public TerrainSearchWindow terrainSearchWindow = null;
     public StudyDeskPlannerWidget studyDeskPlanner = null;
     public NDraggableWidget studyReportWidget = null;
+    public DbStatsOverlay dbStatsOverlay = null;
     
     // Local storage for ring settings
     public IconRingConfig iconRingConfig;
@@ -171,7 +173,7 @@ public class NGameUI extends GameUI
         add(new NDraggableWidget(questinfo = new NQuestInfo(), "quests", questinfo.sz.add(NDraggableWidget.delta)));
         add(new NDraggableWidget(recentActionsPanel = new NRecentActionsPanel(), "recentactions", recentActionsPanel.sz.add(NDraggableWidget.delta)));
         // Add drink meter widget to show water/tea capacity (uses IMeter.fsz to match other meters)
-        DrinkMeter drinkMeter = new DrinkMeter();
+        drinkMeter = new DrinkMeter();
         add(new NDraggableWidget(drinkMeter, "drinkmeter", IMeter.fsz));
         add(guiinfo = new NGUIInfo(),new Coord(sz.x/2 - NGUIInfo.xs/2,sz.y/5 ));
         if(!(Boolean) NConfig.get(NConfig.Key.show_drag_menu))
@@ -200,6 +202,10 @@ public class NGameUI extends GameUI
         add(localizedResourceTimerDialog = new LocalizedResourceTimerDialog(), new Coord(200, 200));
         localizedResourceTimerService = new LocalizedResourceTimerService(this, genus);
         add(localizedResourceTimersWindow = new LocalizedResourceTimersWindow(localizedResourceTimerService), new Coord(100, 100));
+        
+        // Database debug overlay - shows in top-right corner
+        add(dbStatsOverlay = new DbStatsOverlay(), new Coord(sz.x - 290, 10));
+        dbStatsOverlay.hide(); // Hidden by default, toggle with F11 or settings
 
         // Profile-aware components are now initialized in attached() before super.attached()
     }
@@ -1083,6 +1089,20 @@ public class NGameUI extends GameUI
     @Override
     public boolean keydown(KeyDownEvent ev) {
         nurgling.tasks.WaitKeyPress.setLastKeyPressed(ev.code);
+        
+        // F11 - Toggle DB stats overlay
+        if (ev.code == KeyEvent.VK_F11 && (Boolean) NConfig.get(NConfig.Key.ndbenable)) {
+            if (dbStatsOverlay != null) {
+                if (dbStatsOverlay.visible()) {
+                    dbStatsOverlay.hide();
+                } else {
+                    dbStatsOverlay.show();
+                    dbStatsOverlay.raise();
+                }
+            }
+            return true;
+        }
+        
         return super.keydown(ev);
     }
 

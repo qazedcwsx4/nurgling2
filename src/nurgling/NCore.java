@@ -149,6 +149,45 @@ public class NCore extends Widget
 
     private final LinkedList<NTask> for_remove = new LinkedList<>();
     private final ConcurrentLinkedQueue<NTask> tasks = new ConcurrentLinkedQueue<>();
+    
+    /**
+     * Get list of active task names for debug display
+     */
+    public String[] getActiveTaskNames() {
+        synchronized (tasks) {
+            if (tasks.isEmpty()) {
+                return new String[0];
+            }
+            return tasks.stream()
+                .map(t -> {
+                    String name = t.getClass().getName();
+                    // Shorten package names
+                    name = name.replace("nurgling.actions.", "");
+                    name = name.replace("nurgling.tasks.", "");
+                    // For anonymous classes, show parent class
+                    if (name.contains("$")) {
+                        int dollarIdx = name.indexOf('$');
+                        String parent = name.substring(0, dollarIdx);
+                        String suffix = name.substring(dollarIdx);
+                        // Get just class name from parent
+                        int lastDot = parent.lastIndexOf('.');
+                        if (lastDot > 0) {
+                            parent = parent.substring(lastDot + 1);
+                        }
+                        name = parent + suffix;
+                    }
+                    return name;
+                })
+                .toArray(String[]::new);
+        }
+    }
+    
+    /**
+     * Get count of active tasks
+     */
+    public int getActiveTaskCount() {
+        return tasks.size();
+    }
 
     public BotmodSettings getBotMod()
     {
@@ -353,6 +392,86 @@ public class NCore extends Widget
     }
 
 
+    // In-memory cache of recently sent recipe hashes to avoid duplicate DB writes
+    private static final Set<String> sentRecipeHashes = ConcurrentHashMap.newKeySet();
+    private static final int MAX_RECIPE_CACHE_SIZE = 5000;
+    
+    // Quick cache for early filtering (name + energy) - checked BEFORE creating task
+    private static final Set<String> recipeQuickCache = ConcurrentHashMap.newKeySet();
+    private static final int MAX_QUICK_CACHE_SIZE = 2000;
+    
+    // Pending recipe tasks counter for debug
+    private static final java.util.concurrent.atomic.AtomicInteger pendingRecipeTasks = new java.util.concurrent.atomic.AtomicInteger(0);
+    
+    /**
+     * Get current recipe cache size for debug display
+     */
+    public static int getRecipeCacheSize() {
+        return sentRecipeHashes.size();
+    }
+    
+    /**
+     * Get pending recipe tasks count for debug
+     */
+    public static int getPendingRecipeTasks() {
+        return pendingRecipeTasks.get();
+    }
+    
+    /**
+     * Check if recipe hash is already in cache (call from main thread before creating task)
+     */
+    public static boolean isRecipeInCache(String recipeHash) {
+        return sentRecipeHashes.contains(recipeHash);
+    }
+    
+    /**
+     * Add recipe hash to cache
+     */
+    public static void addRecipeToCache(String recipeHash) {
+        if (sentRecipeHashes.size() >= MAX_RECIPE_CACHE_SIZE) {
+            // Simple eviction: clear half of the cache when full
+            int toRemove = MAX_RECIPE_CACHE_SIZE / 2;
+            java.util.Iterator<String> it = sentRecipeHashes.iterator();
+            while (it.hasNext() && toRemove > 0) {
+                it.next();
+                it.remove();
+                toRemove--;
+            }
+        }
+        sentRecipeHashes.add(recipeHash);
+    }
+    
+    /**
+     * Check if recipe is in quick cache (early filtering before creating task)
+     */
+    public static boolean isRecipeQuickCached(String quickKey) {
+        return recipeQuickCache.contains(quickKey);
+    }
+    
+    /**
+     * Add to quick cache
+     */
+    public static void addRecipeQuickCache(String quickKey) {
+        if (recipeQuickCache.size() >= MAX_QUICK_CACHE_SIZE) {
+            // Simple eviction
+            int toRemove = MAX_QUICK_CACHE_SIZE / 2;
+            java.util.Iterator<String> it = recipeQuickCache.iterator();
+            while (it.hasNext() && toRemove > 0) {
+                it.next();
+                it.remove();
+                toRemove--;
+            }
+        }
+        recipeQuickCache.add(quickKey);
+    }
+    
+    /**
+     * Get quick cache size for debug
+     */
+    public static int getRecipeQuickCacheSize() {
+        return recipeQuickCache.size();
+    }
+    
     public static class NGItemWriter implements Runnable {
         private final NGItem item;
         private final nurgling.db.DatabaseManager databaseManager;
@@ -379,6 +498,12 @@ public class NCore extends Widget
 
                 // Build recipe hash
                 String recipeHash = buildRecipeHash(fi, resourceName);
+                
+                // Check if we already sent this recipe (in-memory cache)
+                if (sentRecipeHashes.contains(recipeHash)) {
+                    nurgling.db.DatabaseManager.incrementSkippedRecipe();
+                    return; // Already sent, skip DB write
+                }
 
                 // Extract ingredients (including smoking wood)
                 java.util.Map<String, nurgling.cookbook.Recipe.IngredientInfo> ingredients = extractIngredients();
@@ -397,6 +522,19 @@ public class NCore extends Widget
                     feps
                 );
 
+                // Add to cache before saving (prevents duplicates during async save)
+                if (sentRecipeHashes.size() >= MAX_RECIPE_CACHE_SIZE) {
+                    // Simple eviction: clear half of the cache when full
+                    int toRemove = MAX_RECIPE_CACHE_SIZE / 2;
+                    Iterator<String> it = sentRecipeHashes.iterator();
+                    while (it.hasNext() && toRemove > 0) {
+                        it.next();
+                        it.remove();
+                        toRemove--;
+                    }
+                }
+                sentRecipeHashes.add(recipeHash);
+
                 // Save recipe using service (handles duplicates gracefully)
                 databaseManager.getRecipeService().saveRecipeAsync(recipe)
                     .exceptionally(ex -> {
@@ -408,6 +546,9 @@ public class NCore extends Widget
                 // Log error but don't crash - recipe import should be resilient
                 System.err.println("Failed to save recipe for item: " + item.name());
                 e.printStackTrace();
+            } finally {
+                // Always decrement pending counter
+                pendingRecipeTasks.decrementAndGet();
             }
         }
 
@@ -455,6 +596,40 @@ public class NCore extends Widget
                         hashInput.append(ing.val * 100);
                     }
                 }
+            }
+
+            // Add smoking wood info to hash so different smoking materials create different recipes
+            // Format matches regular ingredients: resName/name + (val * 100), where val=1.0 for smoking (100%)
+            try {
+                for (ItemInfo info : item.info) {
+                    if (info.getClass().getName().contains("Smoke")) {
+                        try {
+                            // Try to get resource name first, then fall back to name
+                            String woodIdentifier = null;
+                            try {
+                                java.lang.reflect.Field resNameField = info.getClass().getDeclaredField("resName");
+                                resNameField.setAccessible(true);
+                                woodIdentifier = (String) resNameField.get(info);
+                            } catch (NoSuchFieldException e) {
+                                // resName field doesn't exist
+                            }
+                            if (woodIdentifier == null || woodIdentifier.isEmpty()) {
+                                java.lang.reflect.Field nameField = info.getClass().getDeclaredField("name");
+                                nameField.setAccessible(true);
+                                woodIdentifier = (String) nameField.get(info);
+                            }
+                            if (woodIdentifier != null && !woodIdentifier.isEmpty()) {
+                                hashInput.append(woodIdentifier);
+                                hashInput.append(1.0 * 100); // Smoking wood is always 100%
+                            }
+                        } catch (NoSuchFieldException | IllegalAccessException e) {
+                            // Could not extract smoking wood info
+                        }
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore errors in smoking wood extraction
             }
 
             return NUtils.calculateSHA256(hashInput.toString());
@@ -529,6 +704,8 @@ public class NCore extends Widget
         if (databaseManager == null) {
             return;
         }
+        
+        pendingRecipeTasks.incrementAndGet();
         NGItemWriter ngItemWriter = new NGItemWriter(item, databaseManager);
         databaseManager.submitTask(ngItemWriter);
     }

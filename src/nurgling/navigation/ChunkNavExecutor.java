@@ -125,6 +125,11 @@ public class ChunkNavExecutor implements Action {
             if (sameLayer) {
                 SegmentWalkResult segResult = followSegmentTiles(segment, gui, targetGridId);
                 if (!segResult.result.IsSuccess()) {
+                    if (replanAttempts < MAX_REPLAN_ATTEMPTS) {
+                        replanAttempts++;
+                        gui.msg("ChunkNav: Replanning after segment failure");
+                        return replanAndContinue(gui);
+                    }
                     return Results.FAIL();
                 }
                 portalGobFromWalk = segResult.portalGob;
@@ -134,6 +139,11 @@ public class ChunkNavExecutor implements Action {
                 // Cross-layer WALK segment - we likely just traversed a portal and are already in target layer
                 SegmentWalkResult segResult = followSegmentTiles(segment, gui, -1);
                 if (!segResult.result.IsSuccess()) {
+                    if (replanAttempts < MAX_REPLAN_ATTEMPTS) {
+                        replanAttempts++;
+                        gui.msg("ChunkNav: Replanning after cross-layer walk failure");
+                        return replanAndContinue(gui);
+                    }
                     return Results.FAIL();
                 }
             }
@@ -143,7 +153,7 @@ public class ChunkNavExecutor implements Action {
 
                 // If we found portal gob during walking, use it directly
                 if (portalGobFromWalk != null) {
-                    traversePortalGob(gui, portalGobFromWalk);
+                    traversePortalGob(gui, portalGobFromWalk, targetGridId);
                 } else {
                     findAndTraversePortalToGrid(gui, segment, targetGridId);
                 }
@@ -197,7 +207,7 @@ public class ChunkNavExecutor implements Action {
 
             // Try portals in priority order
             for (ScoredPortal scored : rankedPortals) {
-                Results result = tryTraversePortal(gui, player, scored.portal);
+                Results result = tryTraversePortal(gui, player, scored.portal, targetGridId);
                 if (result != null) return result;
             }
         }
@@ -205,7 +215,7 @@ public class ChunkNavExecutor implements Action {
         // Fallback: Look for common portal gob patterns
         Gob nearestPortal = findNearestPortalGob(gui, player);
         if (nearestPortal != null) {
-            return traversePortalGob(gui, nearestPortal);
+            return traversePortalGob(gui, nearestPortal, targetGridId);
         }
 
         return Results.FAIL();
@@ -335,7 +345,7 @@ public class ChunkNavExecutor implements Action {
         return null;
     }
 
-    private Results tryTraversePortal(NGameUI gui, Gob player, ChunkPortal recordedPortal) throws InterruptedException {
+    private Results tryTraversePortal(NGameUI gui, Gob player, ChunkPortal recordedPortal, long targetGridId) throws InterruptedException {
         Gob portalGob = findGobByName(gui, recordedPortal.gobName, player.rc, MCache.tilesz.x * 30);
         if (portalGob == null) {
             return null;
@@ -362,7 +372,7 @@ public class ChunkNavExecutor implements Action {
             }
         }
 
-        return traversePortalGob(gui, portalGob);
+        return traversePortalGob(gui, portalGob, targetGridId);
     }
 
     private Gob findGobByName(NGameUI gui, String gobName, Coord2d center, double maxDist) {
@@ -386,7 +396,7 @@ public class ChunkNavExecutor implements Action {
         return closest;
     }
 
-    private Results traversePortalGob(NGameUI gui, Gob portalGob) throws InterruptedException {
+    private Results traversePortalGob(NGameUI gui, Gob portalGob, long targetGridId) throws InterruptedException {
         String portalName = portalGob.ngob != null ? portalGob.ngob.name : "unknown";
 
         // Portal recording is handled automatically by PortalTraversalTracker via getLastActions()
@@ -408,7 +418,8 @@ public class ChunkNavExecutor implements Action {
             NUtils.openDoorOnAGob(gui, portalGob);
         }
 
-        NUtils.getUI().core.addTask(new WaitForMapLoad());
+        // Wait for the target grid to be fully loaded (mesh and fog ready)
+        NUtils.getUI().core.addTask(new WaitForMapLoadByGridId(gui, targetGridId));
         NUtils.getUI().core.addTask(new WaitForGobStability());
 
         return Results.SUCCESS();
@@ -603,6 +614,8 @@ public class ChunkNavExecutor implements Action {
 
             int targetIndex = Math.min(currentStepIndex + waypointInterval, segment.steps.size() - 1);
             ChunkPath.TileStep targetStep = segment.steps.get(targetIndex);
+            // Always compute waypoint from live worldTileOrigin - pre-computed worldCoord may be stale
+            // (computed at plan time with different/missing worldTileOrigin)
             Coord worldTile = currentWorldTileOrigin.add(targetStep.localCoord);
             Coord2d waypoint = worldTile.mul(MCache.tilesz).add(MCache.tilehsz);
 
@@ -627,6 +640,7 @@ public class ChunkNavExecutor implements Action {
             boolean madeProgress = false;
             for (int midIndex = currentStepIndex + 5; midIndex < targetIndex; midIndex += 5) {
                 ChunkPath.TileStep midStep = segment.steps.get(midIndex);
+                // Always compute from live worldTileOrigin
                 Coord midWorldTile = currentWorldTileOrigin.add(midStep.localCoord);
                 Coord2d midWaypoint = midWorldTile.mul(MCache.tilesz).add(MCache.tilehsz);
 
@@ -645,6 +659,7 @@ public class ChunkNavExecutor implements Action {
                 // Try single tile steps as last resort
                 for (int singleIndex = currentStepIndex + 1; singleIndex <= targetIndex; singleIndex++) {
                     ChunkPath.TileStep singleStep = segment.steps.get(singleIndex);
+                    // Always compute from live worldTileOrigin
                     Coord singleWorldTile = currentWorldTileOrigin.add(singleStep.localCoord);
                     Coord2d singleWaypoint = singleWorldTile.mul(MCache.tilesz).add(MCache.tilehsz);
 
@@ -735,7 +750,13 @@ public class ChunkNavExecutor implements Action {
             if (waypoint.portal != null && waypoint.type == ChunkPath.WaypointType.PORTAL_ENTRY) {
                 tickPortalTracker();
 
-                Results portalResult = traversePortal(waypoint.portal, waypoint.gridId, gui);
+                // Get the target gridId from the next waypoint (where we'll be after portal traversal)
+                long targetGridId = -1;
+                if (i + 1 < path.waypoints.size()) {
+                    targetGridId = path.waypoints.get(i + 1).gridId;
+                }
+
+                Results portalResult = traversePortal(waypoint.portal, waypoint.gridId, targetGridId, gui);
                 if (!portalResult.IsSuccess()) {
                     gui.error("ChunkNav: Portal traversal failed");
                     return Results.FAIL();
@@ -940,7 +961,7 @@ public class ChunkNavExecutor implements Action {
         return finalPf.run(gui);
     }
 
-    private Results traversePortal(ChunkPortal portal, long gridId, NGameUI gui) throws InterruptedException {
+    private Results traversePortal(ChunkPortal portal, long gridId, long targetGridId, NGameUI gui) throws InterruptedException {
         Coord2d accessPoint = getPortalAccessPoint(portal, gridId, gui);
         if (accessPoint != null) {
             walkTowardTarget(accessPoint, gui, WalkConfig.DEFAULT);
@@ -978,7 +999,8 @@ public class ChunkNavExecutor implements Action {
         if (isLoadingPortal(portal.type)) {
             String exitGobName = GateDetector.getDoorPair(portal.gobName);
 
-            NUtils.getUI().core.addTask(new WaitForMapLoad());
+            // Wait for the target grid to be fully loaded (mesh and fog ready)
+            NUtils.getUI().core.addTask(new WaitForMapLoadByGridId(gui, targetGridId));
 
             if (exitGobName != null) {
                 NUtils.getUI().core.addTask(new WaitForExitPortal(exitGobName));
@@ -1028,6 +1050,8 @@ public class ChunkNavExecutor implements Action {
             case CELLAR:
             case STAIRS_UP:
             case STAIRS_DOWN:
+            case MINEHOLE:
+            case LADDER:
             case MINE_ENTRANCE:
                 return true;
             case GATE:
@@ -1131,6 +1155,9 @@ public class ChunkNavExecutor implements Action {
             return Results.FAIL();
         }
 
+        // Force record all visible grids before replanning to ensure fresh data
+        manager.forceRecordVisibleGrids();
+
         long currentChunkId = graph.getPlayerChunkId();
         if (currentChunkId == -1) {
             return Results.FAIL();
@@ -1173,32 +1200,6 @@ public class ChunkNavExecutor implements Action {
         points.add(new Coord2d(centerX, areaMax.y + offset));
 
         return points;
-    }
-
-    private static class WaitForMapLoad extends NTask {
-        private long startTime;
-        private static final long TIMEOUT_MS = PORTAL_LOAD_TIMEOUT_MS;
-
-        public boolean check() {
-            if (startTime == 0) {
-                startTime = System.currentTimeMillis();
-            }
-
-            if (System.currentTimeMillis() - startTime > TIMEOUT_MS) {
-                return true;
-            }
-
-            try {
-                Gob player = NUtils.player();
-                if (player != null) {
-                    return System.currentTimeMillis() - startTime > 2000;
-                }
-            } catch (Exception e) {
-                // Still loading
-            }
-
-            return false;
-        }
     }
 
     private static class WaitForExitPortal extends NTask {
