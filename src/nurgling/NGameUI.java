@@ -288,6 +288,12 @@ public class NGameUI extends GameUI
             labeledMarkService.dispose();
         if(nurgling.NUtils.getUI().core!=null)
             NUtils.getUI().core.dispose();
+        // Shutdown ChunkNav to prevent thread accumulation on game restart
+        if(map instanceof NMapView) {
+            NMapView nmapView = (NMapView) map;
+            if(nmapView.getChunkNavManager() != null)
+                nmapView.getChunkNavManager().shutdown();
+        }
         super.dispose();
     }
 
@@ -577,6 +583,8 @@ public class NGameUI extends GameUI
             areas.move(new Coord(sz.x / 2 - NGUIInfo.xs / 2, sz.y / 5));
         if(cookBook != null)
             cookBook.move(new Coord(sz.x / 2 - NGUIInfo.xs / 2, sz.y / 5));
+        if(storageItemsWidget != null)
+            storageItemsWidget.move(new Coord(sz.x / 2 - NGUIInfo.xs / 2, sz.y / 5));
         if(nean != null)
             nean.move(new Coord(sz.x / 2 - NGUIInfo.xs / 2, sz.y / 7));
         if(spec != null)
